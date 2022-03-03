@@ -82,7 +82,7 @@ class PID(object):
         #updating error values#
         self.error = angle
         self.integral_error+= self.error * self.dt
-        self.derivative_error = velocity * self.dt
+        self.derivative_error = velocity
 
         #updating previous error#
         self.last_error = self.error
