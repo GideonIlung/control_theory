@@ -4,7 +4,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 #CONSTANTS
-TIME_STEP = 0.06
+TIME_STEP = 0.1
 N_ITER = 100
 SETPOINT = 0  # angle of pole must be zero
 K = 3         # control horizion
@@ -141,7 +141,7 @@ def MPC(x0,k,dt):
 
 
 
-def Simulate(n,h,K,setpoint):
+def Simulate(n,h,K,setpoint,init_state_bool = False,init_state=None,render=True):
     '''
     Simulates and attempts to solve the cart pole problem
 
@@ -150,36 +150,61 @@ def Simulate(n,h,K,setpoint):
                     h        (float) : the time-step. i.e the time between measurements
                     param    (list)  : list of 3 float values. parameters of the PID controller
                     setpoint (array) : the desired state
+                    render   (bool)  : visualisation of problem 
     '''
 
     env_name = 'CartPole-v1'
     env = gym.make(env_name)
 
     state = env.reset()
-
+    if init_state_bool != False:
+        env.state = init_state
+        state = env.state
+        
     error = []
 
     for _ in range(n):
         #plotting#
-        error.append(np.abs(state[2]))
+        error.append(state[2])
 
         action = MPC(state,K,h)
         state,reward,done,info=env.step(action)
-        env.render()
-        time.sleep(h)
+
+        if render == True:
+            env.render()
+            time.sleep(0.08)
 
         if done == True:
             state = env.reset()
-            controller.reset()
+            #controller.reset()
 
     env.close()
 
-    plt.plot(error)
+    plt.plot(error,label = "K = {}".format(K))
+
+def vary_K():
+    h = TIME_STEP
+    n = N_ITER
+
+    init_state = np.array([0.01,0.01,0.01,0.01])
+
+    Simulate(n, h,3,SETPOINT,init_state_bool=True,init_state=init_state,render=False)
+    Simulate(n, h,4,SETPOINT,init_state_bool=True,init_state=init_state,render=False)
+    Simulate(n, h,5,SETPOINT,init_state_bool=True,init_state=init_state,render=False)
+    Simulate(n, h,6,SETPOINT,init_state_bool=True,init_state=init_state,render=False)
+
+    #plotting zero line#
+    line = np.zeros(n)
+    plt.ylabel(r'$\theta$ displacement')
+    plt.xlabel('time')
+    plt.plot(line,'k--')
+    plt.legend(loc='best')    
     plt.show()
 
 def main():
     h = TIME_STEP
     n = N_ITER
-    Simulate(n, h,K,SETPOINT)
 
+    #Simulate(n, h,3,SETPOINT)
+    vary_K()
 main()
