@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 
 #CONSTANTS
 TIME_STEP = 0.1
-N_ITER = 1
+N_ITER = 100
 SETPOINT = 0  # angle of pole must be zero
 K = 3         # control horizion
 #-----------------
@@ -31,7 +31,7 @@ class MPC(object):
         self.dt = _dt
         self.k = _k
     
-    def action(self,x0,opti='dynamic',m=30,n=200,mu=1e-3,k=10):
+    def action(self,x0,opti='dynamic',m=10,n=100,mu=1e-3,k=2):
         """
             determines the next action to be taken to control the system
 
@@ -57,7 +57,7 @@ class MPC(object):
     def sigmoid(self,x):
         return 1.0 / (1.0 + np.exp(-x))  
     
-    def evaluate(self,x0,u):
+    def evaluate(self,x0,u,k):
         """
             determines the fitness of the policy u in question
 
@@ -68,7 +68,7 @@ class MPC(object):
         X = []
         x = x0.copy()
 
-        for i in range(0,self.k,1):
+        for i in range(0,k,1):
             temp = self.model(x,u[i],self.dt)
 
             if self.constraints(temp) == False:
@@ -77,14 +77,14 @@ class MPC(object):
             X.append(temp)
             x = temp.copy()
         
-        value = self.cost(X, self.k)
+        value = self.cost(X,k)
         return value,u
 
 ###########################DYNAMIC PROGRAMMING##########################################
     def dynamic(self,x0,u):
         if len(u) == self.k:
             
-            return self.evaluate(x0, u)
+            return self.evaluate(x0, u,self.k)
     
         else:
 
@@ -104,7 +104,7 @@ class MPC(object):
 ####################################################################################
 
 ###########################GENETIC ALGORITHM########################################
-    def init_chromosome(self)->list:
+    def init_chromosome(self,x0)->list:
         """
             randomly generates a possible solution
 
@@ -113,6 +113,24 @@ class MPC(object):
         """
         L = self.k
         x = []
+
+        # while(len(x)<L):
+        #     r = np.random.uniform(0,1)
+
+        #     if r < 0.5:
+        #         x.append(-10)
+        #     else:
+        #         x.append(10)
+            
+        #     y,_ = self.evaluate(x0, x, len(x))
+
+        #     if (y == np.inf) and (x[-1]==-10):
+        #         x[-1] = 10
+        #     elif (y == np.inf) and (x[-1]==10):
+        #         x[-1] = -10
+
+        #     y,_ = self.evaluate(x0, x, len(x))
+        # return x
 
         for i in range(0,L,1):
             r = np.random.uniform(0,1)
@@ -136,15 +154,18 @@ class MPC(object):
         fx = []
 
         for _ in range(0,m,1):
+            
+            u = self.init_chromosome(x0)
+            y,_ = self.evaluate(x0, u,self.k)
 
-            valid = False
+            #valid = False
 
-            while valid == False:  #issue, sometimes all solutions violate constraints#
-                u = self.init_chromosome()
-                y,_ = self.evaluate(x0, u)
+            # while valid == False:  #issue, sometimes all solutions violate constraints#
+            #     u = self.init_chromosome(x0)
+            #     y,_ = self.evaluate(x0, u,self.k)
 
-                if y!= np.inf:
-                    valid = True
+            #     if y!= np.inf:
+            #         valid = True
 
             pop.append(u)
             fx.append(y)
@@ -193,8 +214,8 @@ class MPC(object):
         #single point crossover#
         if mode == 1:
             i = np.random.randint(0,L-2)
-            x[i:L] = v[i:L]
-            y[i:L] = u[i:L]
+            x[i:L] = v[i:L].copy()
+            y[i:L] = u[i:L].copy()
         else: #double point crossover#
             i = np.random.randint(0,L-1)
             j = np.random.randint(0,L-1)
@@ -202,11 +223,11 @@ class MPC(object):
             a = min(i,j)
             b = max(i,j)
 
-            x[a:b+1] = v[a:b+1]
-            y[a:b+1] = u[a:b+1]
+            x[a:b+1] = v[a:b+1].copy()
+            y[a:b+1] = u[a:b+1].copy()
         
-        fx,_ = self.evaluate(x0,x)
-        fy,_ = self.evaluate(x0,y)
+        fx,_ = self.evaluate(x0,x,self.k)
+        fy,_ = self.evaluate(x0,y,self.k)
 
         return [x,y],[fx,fy]
     
@@ -234,7 +255,7 @@ class MPC(object):
                 x[i] = 10
                 change = True
         
-        fx,_ = self.evaluate(x0, x)
+        fx,_ = self.evaluate(x0, x,self.k)
         return change,x,fx
 
     def new_pop(self,x0,pop,costs,mu,k):
@@ -292,8 +313,7 @@ class MPC(object):
             del fx[-1]
         
         #updating population#
-        pop = x.copy()
-        costs = fx.copy()
+        return x,fx
 
 
     def GA(self,x0,m,n,mu,k): #TODO#
@@ -311,9 +331,9 @@ class MPC(object):
         #creating population#
         pop,cost = self.init_population(x0, m)
 
-        for _ in range(0,n,1):
-            self.new_pop(x0, pop, cost, mu, k)
         
+        for _ in range(0,n,1):
+            pop,cost = self.new_pop(x0, pop, cost, mu, k)
         return cost[0],pop[0]
 
 ####################################################################################
@@ -492,11 +512,10 @@ def Simulate(n,h,K,setpoint,init_state_bool = False,init_state=None,render=True,
 
     plt.plot(error,label = "K = {}".format(K))
 
-
-
 if __name__ == '__main__':
     h = TIME_STEP
     n = N_ITER
 
     #Simulate(n, h,6,SETPOINT,opti='GA')
-    analysis(K=[100],opti='GA')
+    analysis(K=[10,15,20],opti='GA')
+
