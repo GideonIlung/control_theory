@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 
 #CONSTANTS
 TIME_STEP = 0.1
-N_ITER = 100
+N_ITER = 500
 SETPOINT = 0  # angle of pole must be zero
 K = 3         # control horizion
 #-----------------
@@ -31,17 +31,18 @@ class MPC(object):
         self.dt = _dt
         self.k = _k
     
-    def action(self,x0,opti='dynamic',m=10,n=100,mu=1e-3,k=2):
+    def action(self,x0,opti='dynamic',m=10,n=100,mu=1e-3,k=2,penalty=True):
         """
             determines the next action to be taken to control the system
 
             Parameters:
-                x0  (array)  : the current state
-                opt (string) : which optimisation hueristic to use
-                m   (int)    : (For GA) size of population
-                n   (int)    : (For GA) number of generations
-                mu  (float)  : (for GA) probability of mutation
-                k   (int)    : (for GA) no of elite solutions to be handed over to next gen
+                x0      (array)  : the current state
+                opt     (string) : which optimisation hueristic to use
+                m       (int)    : (For GA) size of population
+                n       (int)    : (For GA) number of generations
+                mu      (float)  : (for GA) probability of mutation
+                k       (int)    : (for GA) no of elite solutions to be handed over to next gen
+                penalty (bool)   : penality added to function or not, if not penality violation values set to inf
 
         """
         if opti == 'dynamic':
@@ -50,34 +51,45 @@ class MPC(object):
             force = self.sigmoid(policy[0])
             return int(np.round(force))
         elif opti == 'GA':
-            fitness,policy = self.GA(x0, m, n, mu, k)
+            fitness,policy = self.GA(x0, m, n, mu, k,penalty=penalty)
             force = self.sigmoid(policy[0])
             return int(np.round(force))
 
     def sigmoid(self,x):
         return 1.0 / (1.0 + np.exp(-x))  
     
-    def evaluate(self,x0,u,k):
+    def evaluate(self,x0,u,k,penalty=False):
         """
             determines the fitness of the policy u in question
 
             Parameters:
-                x0 (array) : the current state
-                u  (array) : the policy
+                x0      (array) : the current state
+                u       (array) : the policy
+                penalty (bool)  : penality added to function or not, if not penality violation values set to inf
         """
         X = []
         x = x0.copy()
 
+        count = k
+        violated = False
+
         for i in range(0,k,1):
             temp = self.model(x,u[i],self.dt)
 
-            if self.constraints(temp) == False:
+            if (self.constraints(temp) == False) and (penalty == False):
                 return np.inf,u    
-            
+            elif (self.constraints(temp) == False) and (violated == False):
+                count = i
+                violated = True
+        
             X.append(temp)
             x = temp.copy()
         
         value = self.cost(X,k)
+
+        if penalty == True:
+            value-= count
+        
         return value,u
 
 ###########################DYNAMIC PROGRAMMING##########################################
@@ -114,24 +126,6 @@ class MPC(object):
         L = self.k
         x = []
 
-        # while(len(x)<L):
-        #     r = np.random.uniform(0,1)
-
-        #     if r < 0.5:
-        #         x.append(-10)
-        #     else:
-        #         x.append(10)
-            
-        #     y,_ = self.evaluate(x0, x, len(x))
-
-        #     if (y == np.inf) and (x[-1]==-10):
-        #         x[-1] = 10
-        #     elif (y == np.inf) and (x[-1]==10):
-        #         x[-1] = -10
-
-        #     y,_ = self.evaluate(x0, x, len(x))
-        # return x
-
         for i in range(0,L,1):
             r = np.random.uniform(0,1)
 
@@ -142,13 +136,14 @@ class MPC(object):
         
         return x
     
-    def init_population(self,x0,m:int)->list: #TODO: generate population that does not violate constraints#
+    def init_population(self,x0,m:int,_penalty = True)->list: #TODO: generate population that does not violate constraints#
         """
             randomly initialises the population
 
             Parameters:
-                x0 (array) : the current state
-                m  (int)   : the size of the population
+                x0      (array) : the current state
+                m       (int)   : the size of the population
+                penalty (bool)  : penality added to function or not, if not penality violation values set to inf
         """
         pop = []
         fx = []
@@ -156,16 +151,7 @@ class MPC(object):
         for _ in range(0,m,1):
             
             u = self.init_chromosome(x0)
-            y,_ = self.evaluate(x0, u,self.k)
-
-            #valid = False
-
-            # while valid == False:  #issue, sometimes all solutions violate constraints#
-            #     u = self.init_chromosome(x0)
-            #     y,_ = self.evaluate(x0, u,self.k)
-
-            #     if y!= np.inf:
-            #         valid = True
+            y,_ = self.evaluate(x0, u,self.k,penalty=_penalty)
 
             pop.append(u)
             fx.append(y)
@@ -196,15 +182,16 @@ class MPC(object):
         return data,fit
     
 
-    def crossover(self,u,v,x0,mode=1):
+    def crossover(self,u,v,x0,mode=1,_penalty=True):
         """
             creates children using crossover
 
             Parameters:
-                u    (list) : the first parent
-                v    (list) : the second parent
-                x0   (list) : current state
-                mode (int)  : single point crossover or double point crossover
+                u       (list)  : the first parent
+                v       (list)  : the second parent
+                x0      (list)  : current state
+                mode    (int)   : single point crossover or double point crossover
+                penalty (bool)  : penality added to function or not, if not penality violation values set to inf
         """
 
         L = len(u)
@@ -226,19 +213,20 @@ class MPC(object):
             x[a:b+1] = v[a:b+1].copy()
             y[a:b+1] = u[a:b+1].copy()
         
-        fx,_ = self.evaluate(x0,x,self.k)
-        fy,_ = self.evaluate(x0,y,self.k)
+        fx,_ = self.evaluate(x0,x,self.k,_penalty)
+        fy,_ = self.evaluate(x0,y,self.k,_penalty)
 
         return [x,y],[fx,fy]
     
-    def mutation(self,x0,u,mu):
+    def mutation(self,x0,u,mu,_penalty=True):
         """
             given probability of mu, the solution with mutate
 
             Parameters:
-                x0 (list)  : the current state
-                u  (list)  : possible solution
-                mu (float) : probability of mutation
+                x0      (list)  : the current state
+                u       (list)  : possible solution
+                mu      (float) : probability of mutation
+                penalty (bool)  : penality added to function or not, if not penality violation values set to inf
         """
 
         x = u.copy()
@@ -255,19 +243,20 @@ class MPC(object):
                 x[i] = 10
                 change = True
         
-        fx,_ = self.evaluate(x0, x,self.k)
+        fx,_ = self.evaluate(x0, x,self.k,penalty=_penalty)
         return change,x,fx
 
-    def new_pop(self,x0,pop,costs,mu,k):
+    def new_pop(self,x0,pop,costs,mu,k,_penalty=True):
         """
             creates the solutions to be used in the next generation
 
             Parameters:
-                x0     (list) : current state
-                pop   (array) : the current population
-                costs (array) : costs associated with each chromosome in population
-                mu    (float) : probability of mutation
-                k     (int)   : no of elite solutions to be handed over to next gen
+                x0      (list)  : current state
+                pop     (array) : the current population
+                costs   (array) : costs associated with each chromosome in population
+                mu      (float) : probability of mutation
+                k       (int)   : no of elite solutions to be handed over to next gen
+                penalty (bool)  : penality added to function or not, if not penality violation values set to inf
         """
 
         #getting elite solutions#
@@ -293,14 +282,14 @@ class MPC(object):
             
 
             #creating children using crossover#
-            child,f_child = self.crossover(parents[0],parents[1], x0)
+            child,f_child = self.crossover(parents[0],parents[1], x0,_penalty=_penalty)
 
             x = x + child
             fx = fx + f_child
         
         #mutation#
         for i in range(0,len(x),1):
-            change,temp,temp_f = self.mutation(x0, x[i], mu)
+            change,temp,temp_f = self.mutation(x0, x[i], mu,_penalty=_penalty)
 
             if change == True:
                 x[i] = temp.copy()
@@ -316,24 +305,24 @@ class MPC(object):
         return x,fx
 
 
-    def GA(self,x0,m,n,mu,k): #TODO#
+    def GA(self,x0,m,n,mu,k,penalty=True): #TODO#
         """
             optimises using binary Genetic algorithm
 
             Parameters:
-                x0 (array) : current state
-                m  (int)   : size of population
-                n  (int)   : number of generations
-                mu (float) : probability of mutation
-                k  (int)   : no of elite solutions to be handed over to next gen
+                x0      (array) : current state
+                m       (int)   : size of population
+                n       (int)   : number of generations
+                mu      (float) : probability of mutation
+                k       (int)   : no of elite solutions to be handed over to next gen
+                penalty (bool)  : penality added to function or not, if not penality violation values set to inf
         """
         
         #creating population#
-        pop,cost = self.init_population(x0, m)
+        pop,cost = self.init_population(x0, m,_penalty=penalty)
 
-        
         for _ in range(0,n,1):
-            pop,cost = self.new_pop(x0, pop, cost, mu, k)
+            pop,cost = self.new_pop(x0, pop, cost, mu, k,_penalty=penalty)
         return cost[0],pop[0]
 
 ####################################################################################
@@ -452,14 +441,14 @@ def cost_function(X,k):
     
     return ans
 
-def analysis(K,opti='dynamic'):
+def analysis(K,opti=['dynamic']):
     h = TIME_STEP
     n = N_ITER
 
     init_state = np.array([0.01,0.01,0.01,0.01])
 
-    for x in K:
-        Simulate(n, h,x,SETPOINT,init_state_bool=True,init_state=init_state,render=False,opti=opti)
+    for i in range(0,len(K),1):
+        Simulate(n, h,K[i],SETPOINT,init_state_bool=True,init_state=init_state,render=False,opti=opti[i])
 
     #plotting zero line#
     line = np.zeros(n)
@@ -510,12 +499,11 @@ def Simulate(n,h,K,setpoint,init_state_bool = False,init_state=None,render=True,
 
     env.close()
 
-    plt.plot(error,label = "K = {}".format(K))
+    plt.plot(error,label = opti + ":K = {}".format(K))
 
 if __name__ == '__main__':
     h = TIME_STEP
     n = N_ITER
 
     #Simulate(n, h,6,SETPOINT,opti='GA')
-    analysis(K=[10,15,20],opti='GA')
-
+    analysis(K=[6,13],opti=['dynamic','GA'])
