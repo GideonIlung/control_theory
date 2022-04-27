@@ -1,5 +1,6 @@
 #IMPORTS#
 import numpy as np
+import matplotlib.pyplot as plt
 import zipfile
 import pandas as pd
 import os
@@ -7,9 +8,11 @@ import os
 import gym
 import time
 
+#number of iterations each chromosome trains#
+TRAIN_TIME = 1000
 
+#number of iterations for simulation#
 TIME = 500
-
 
 class NN:
     """
@@ -143,40 +146,13 @@ class NN:
 
             self.reconstruct(data,shapes)
     
-
-    def convert_bits_to_values(self,x,bitlengths,matrix_bits,boundaries):
-        """
-            converts a genetic algorithm solution to values
-        """
-
-        values = []
-
-        matrix_index = 0
-
-        #looping through each weight matrix#
-        for i in range(0,len(bitlengths),1):
-            
-            #weight matrix in bit form#
-            bit_matrix = x[matrix_index:matrix_index + matrix_bits[i]].copy()
-
-            #updating matrix index for next interation#
-            matrix_index = matrix_index + matrix_bits[i]
-
-            #getting each value#
-            for j in range(0,len(bit_matrix),bitlengths[i]):
-                data = bit_matrix[j:j+bitlengths[i]].copy()
-
-                #binary value#
-                binary = ''.join(str(e) for e in data)
-                bin_value = int(binary,2)
-
-                temp = -boundaries[i] +  2*boundaries[i] * (bin_value/(2**(bitlengths[i]) -1))
-                values.append(temp)
-        
-        return values
-
+######################################ACTIVATION_FUNCTIONS#################################################
     def sigmoid(self,x):
         value = 1/(1+np.exp(-x))
+        return value
+    
+    def relu(self,x):
+        value = np.max(0,x)
         return value
     
     def activation_function(self,x,func='sigmoid'):
@@ -187,7 +163,11 @@ class NN:
         """
         if func == 'sigmoid':
             return self.sigmoid(x)
-
+        
+        if func== 'relu':
+            return self.relu(x)
+        
+#############################################################################################################
     def feedfoward(self,x0,round=True):
 
         #reshaping vector#
@@ -202,7 +182,14 @@ class NN:
             x = np.vstack((v,x))
 
             z = self.W[i] @ x
-            a = self.activation_function(z)
+
+            #TODO: relu giving issues
+            # if i != len(self.W)-1:
+            #     a = self.activation_function(z,func='relu')
+            # else:
+            #     a = self.activation_function(z,func='sigmoid')
+
+            a = self.activation_function(z,func='sigmoid')
             x = np.copy(a)
 
         if round==True:
@@ -213,13 +200,12 @@ class NN:
         
         return x.flatten() 
 
-    def GA_fitness(self,x,bitlengths,matrix_bits,boundaries,shapes):
-        """
-            Determines the fitness of the possible solution x
-        """
+ ###################################REAL_CODED_GENETIC_ALGORITHM#################################################   
 
-        data = self.convert_bits_to_values(x,bitlengths,matrix_bits,boundaries)
-        self.reconstruct(data,shapes)
+    def sim_fitness(self):
+        """
+            one run of the simulation
+        """
 
         #add in simulation here#
         env_name = 'CartPole-v1'
@@ -229,59 +215,83 @@ class NN:
 
         score = 0
 
-        for count in range(TIME):
-        #plotting#
-            #error.append(state[2])
-
+        for count in range(TRAIN_TIME):
             action = self.feedfoward(state)
             state,reward,done,info=env.step(int(action))
-
             score+=reward
 
             if done == True:
-
-                if count<TIME-1:
-                    score-= 50
-                
-                state = env.reset()
-                #controller.reset()
+                break
         
         env.close()
         return score
-        ########################
     
-    def init_chromosome(self,L):
+    def fitness(self,x,shapes,rep=3):
         """
-            Creates possible solution
+            Determines fitness of the weights
 
             Parameters:
-                L (int) : bitlength of solution
+                x      (list)  : possible solution
+                shapes (list)  : shape of weight matrices
             
+            Outputs:
+                score  (float) : fitness of chromosome x
+        """
+
+        self.reconstruct(x, shapes)
+        score = 0
+
+        for _ in range(0,rep,1):
+            value = self.sim_fitness()
+            score+=value
+        
+        score = score/rep
+        return score
+
+    def init_chromosome(self,a,b):
+        """
+            Initialises a possible solution randomly
+
+            Parameters:
+                a (list) : set of lower boundaries
+                b (list) : set of upper boundaries
+            
+            Output:
+                x (list) : possible solution
         """
 
         x = []
+        n = len(a)
 
-        for _ in range(L):
+        for i in range(0,n,1):
             r = np.random.uniform(0,1)
-
-            if r<0.5:
-                x.append(0)
-            else:
-                x.append(1)
+            value = a[i] + (b[i]-a[i])*r
+            x.append(value)
         
         return x
     
-    def init_population(self,N,L,bitlengths,matrix_bits,boundaries,shapes):
+    def init_population(self,a,b,N,shapes):
         """
-            initialises the population
+            Initalises the population of solutions
+
+            Parameters:
+                a      (list) : set of lower boundaries
+                b      (list) : set of upper boundaries
+                N      (int)  : size of population
+                shapes (list) : shape of weight matrices
+            
+            Outputs
+                pop    (list) : set of possible solutions
+                costs  (list) : list of fitness values corresponding to each solution in pop
         """
 
         pop = []
         costs = []
 
-        for _ in range(N):
-            x = self.init_chromosome(L)
-            fx = self.GA_fitness(x,bitlengths,matrix_bits,boundaries,shapes)
+        for _ in range(0,N,1):
+            x = self.init_chromosome(a, b)
+            fx = self.fitness(x, shapes)
+
             pop.append(x)
             costs.append(fx)
         
@@ -289,161 +299,128 @@ class NN:
     
     def elitism(self,pop,costs,k):
         """
-            returns the top k solutions to be used in the next generation
+            returns the top k possible solutions
 
-            Parameters :
-                pop   (array) : the current population
-                costs (array) : costs associated with each chromosome in population
+            Parameters:
+                pop    (list) : set of possible solutions
+                costs  (list) : list of fitness values corresponding to each solution in pop
+                k      (int)  : number of top solutions to be returned
+
+            Outputs:
+                x      (list)  : top k chormosomes
+                fx     (float) : fitness of values in x
         """
-        
+
         x = pop.copy()
         fx = costs.copy()
 
-        self.quickSort(x,fx) #sorting to determine#
-
-        data = []
-        fit = []
-
-        for i in range(0,k,1):
-            data.append(x[i])
-            fit.append(fx[i])
-        
-        return data,fit
-    
-    def crossover(self,u,v,bitlengths,matrix_bits,boundaries,shapes,mode=1):
-        """
-            creates children using crossover
-
-            Parameters:
-                u       (list)  : the first parent
-                v       (list)  : the second parent
-                x0      (list)  : current state
-                mode    (int)   : single point crossover or double point crossover
-        """
-
-        L = len(u)
-        x = u.copy()
-        y = v.copy()
-
-        #single point crossover#
-        if mode == 1:
-            i = np.random.randint(0,L-2)
-            x[i:L] = v[i:L].copy()
-            y[i:L] = u[i:L].copy()
-        else: #double point crossover#
-            i = np.random.randint(0,L-1)
-            j = np.random.randint(0,L-1)
-
-            a = min(i,j)
-            b = max(i,j)
-
-            x[a:b+1] = v[a:b+1].copy()
-            y[a:b+1] = u[a:b+1].copy()
-        
-        fx = self.GA_fitness(x,bitlengths,matrix_bits,boundaries,shapes)
-        fy = self.GA_fitness(y,bitlengths,matrix_bits,boundaries,shapes)
-
-        return [x,y],[fx,fy]
-    
-
-    def mutation(self,u,mu,bitlengths,matrix_bits,boundaries,shapes):
-        """
-            given probability of mu, the solution with mutate
-
-            Parameters:
-                u       (list)  : possible solution
-                mu      (float) : probability of mutation
-        """
-
-        x = u.copy()
-
-        change = False
-
-        for i in range(0,len(x),1):
-            r = np.random.uniform(0,1)
-
-            if (r<mu) and (x[i]==10):
-                x[i] = -10
-                change = True
-            elif (r<mu) and (x[i]==-10):
-                x[i] = 10
-                change = True
-        
-        fx = 0
-
-        if change == True:
-            fx = self.GA_fitness(x,bitlengths,matrix_bits,boundaries,shapes)
-        
-        return change,x,fx
-    
-    def new_pop(self,pop,costs,mu,k,bitlengths,matrix_bits,boundaries,shapes):
-        """
-            creates the solutions to be used in the next generation
-
-            Parameters:
-                pop     (array) : the current population
-                costs   (array) : costs associated with each chromosome in population
-                mu      (float) : probability of mutation
-                k       (int)   : no of elite solutions to be handed over to next gen
-                penalty (bool)  : penality added to function or not, if not penality violation values set to inf
-        """
-
-        #getting elite solutions#
-        x,fx = self.elitism(pop, costs, k)
-
-        #repeatedly create children#
-        while len(x) < len(pop):
-
-            #selecting parents using tournament selection#
-            parents = []
-            for _ in range(0,2,1):
-                i = 0
-                j = 0 
-
-                while (i == j) and (len(pop)>1):
-                    i = np.random.randint(0,len(pop)-1)
-                    j = np.random.randint(0,len(pop)-1)
-                
-                if costs[i]> costs[j]:
-                    parents.append(pop[i])
-                else:
-                    parents.append(pop[j])
-            
-
-            #creating children using crossover#
-            child,f_child = self.crossover(parents[0],parents[1],bitlengths,matrix_bits,boundaries,shapes)
-
-            x = x + child
-            fx = fx + f_child
-        
-        #mutation#
-        for i in range(0,len(x),1):
-            change,temp,temp_f = self.mutation(x[i], mu,bitlengths,matrix_bits,boundaries,shapes)
-
-            if change == True:
-                x[i] = temp.copy()
-                fx[i] = temp_f
-        
-        #if x larger than pop size remove worst solutions#
         self.quickSort(x, fx)
-        while len(x) > len(pop):
-            del x[-1]
-            del fx[-1]
+        return x[0:k],fx[0:k]
+    
+    def blend_crossover(self,p1,p2,shapes,alpha=0.5):
+        """
+            Performs blended crossover to produce possible
+            solution for next generation
+
+            Parameters:
+                p1     (list)  : first parent
+                p2     (list)  : second parent
+                shapes (list)  : shape of weight matrices
+                alpha  (float) : blended crossover parameter
+            
+            Outputs:
+                x     (list)  : new possible solution
+                fx    (float) : fitness of solution
+        """
+        n = len(p1)
+
+        x = []
+
+        for i in range(0,n,1):
+            a = min(p1[i],p2[i])
+            b = max(p1[i],p2[i])
+
+            r = np.random.uniform(0,1)
+            dist = b-a
+            value = a - alpha*dist + (dist + 2*alpha*dist)*r
+            x.append(value)
         
-        #updating population#
+        fx = self.fitness(x,shapes)
         return x,fx
 
-    def GA(self,N,k,m,mu,L,bitlengths,matrix_bits,boundaries,shapes):
+    def tournament_selection(self,pop,costs):
+        """
+            Determines chromosomes to be used for crossover to produce
+            better solutions using tournament selection
+
+            Parameters:
+                pop    (list) : set of possible solutions
+                costs  (list) : list of fitness values corresponding to each solution in pop
+            
+            Outputs:
+                p      (list) : parent to be used in crossover
+        """
+
+        i = 0
+        j = 0
+
+        while i==j:
+            i = np.random.randint(0,len(pop))
+            j = np.random.randint(0,len(pop))
+
+        if costs[i] > costs[i]:
+            return pop[i]
+        else:
+            return pop[j]
+    
+
+    def GA(self,a,b,shapes,N,k,m,mu):
+        """
+            Optimises the Neural Network using 
+            Genetic Alogrithm
+
+            Parameters:
+                a      (list)  : set of lower boundaries
+                b      (list)  : set of upper boundaries
+                shapes (list)  : shape of weight matrices
+                N      (int)   : population size
+                k      (int)   : number of elite solutions
+                m      (int)   : number of generations
+                mu     (int)   : probability of mutation
+            
+            Outputs:
+                x      (list)  : best weights found
+                fx     (float) : fitness of solution x
+        """
+
+        #number of new solutions to be created#
+        n_children = N-k
+
+        pop,costs = self.init_population(a, b, N, shapes)
         
-        #creating population#
-        pop,costs = self.init_population(N,L,bitlengths,matrix_bits,boundaries,shapes)
-
         for _ in range(0,m,1):
-            pop,costs = self.new_pop(pop, costs, mu, k,bitlengths,matrix_bits,boundaries,shapes)
-        return pop[0],costs[0]
+            x,fx = self.elitism(pop, costs, k)
 
+            #creating children#
+            for _ in range(0,n_children,1):
+                p1 = self.tournament_selection(pop, costs)
+                p2 = self.tournament_selection(pop, costs)
+                child,child_cost = self.blend_crossover(p1, p2, shapes)
 
-    def optimise(self,acc,N=20,k=12,m=30,mu=1e-3):
+                #appending to list#
+                x.append(child)
+                fx.append(child_cost)
+            
+            #TODO: Add Mutation#
+
+            #updating generation#
+            pop = x.copy()
+            costs = fx.copy()
+        
+        index = np.argmax(costs)
+        return pop[index],costs[index]
+
+    def optimise(self,N=100,k=30,m=200,mu=1e-3):
         """
             Optimises the Neural Network using 
             Genetic Alogrithm
@@ -455,16 +432,10 @@ class NN:
                 m   (int) : number of generations
                 mu  (int) : probability of mutation
         """
-
-        bitlengths = []
-        matrix_bits = []
-        boundaries = []
-        P_values = []
-
+        
+        a = [] #lower boundaries#
+        b = [] #upper boundaries#
         shapes = []
-
-        #total bitlength#
-        L = 0
 
         #getting info#
         for w in self.W:
@@ -478,19 +449,14 @@ class NN:
             shapes.append([u,v])
 
             boundary = np.sqrt(2/(u+v))
-            P = 2*boundary * (10**acc)
-            bit = int(np.ceil(np.log2(P)))
-            matrix_bit = bit*u*v
-
-            boundaries.append(boundary)
-            bitlengths.append(bit)
-            matrix_bits.append(matrix_bit)
-            P_values.append(P)
-            L+=matrix_bit
+            
+            for _ in range(0,u*v,1):
+                a.append(-boundary)
+                b.append(boundary)
         
-        binary_weights,cost = self.GA(N,k,m,mu,L,bitlengths,matrix_bits,boundaries,shapes)
+
+        weights,cost = self.GA(a, b, shapes,N,k,m,mu)
         print(cost)
-        weights = self.convert_bits_to_values(binary_weights, bitlengths, matrix_bits, boundaries)
         self.reconstruct(weights, shapes)
         self.save_model()
 
@@ -542,22 +508,34 @@ class NN:
 if __name__ == '__main__':
     shape = [4,4,1]
     model = NN(shape)
-   #model.optimise(acc=2)
+    #model.optimise()
 
-    model.load_model(filename='smallModel.zip')
+    model.load_model()
 
     env_name = 'CartPole-v1'
     env = gym.make(env_name)
     state = env.reset()
 
+    error = []
+    render = False
+
     for _ in range(TIME):
+        
+        #plotting#
+        error.append(state[2])
 
         action = model.feedfoward(state)
         state,reward,done,info=env.step(int(action))
 
-        env.render()
-        time.sleep(0.08)
+        if render == True:
+            env.render()
+            time.sleep(0.08)
 
         if done == True:
             state = env.reset()
-            #controller.reset()
+    
+    env.close()
+
+    if render == False:
+        plt.plot(error,label='error')
+        plt.show()
