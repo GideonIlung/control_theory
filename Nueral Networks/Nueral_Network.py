@@ -517,7 +517,7 @@ if __name__ == '__main__':
     state = env.reset()
 
     error = []
-    render = False
+    render = True
 
     for _ in range(TIME):
         
