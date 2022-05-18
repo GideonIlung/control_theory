@@ -104,7 +104,31 @@ class Genome:
         if func== 'relu':
             return self.relu(x)
     #############################################################################################################
+    def get_max_innov(self):
+        """
+            get the maximum innovation number in genome
+        """
 
+        innov = -1
+
+        for x in self.edges:
+
+            if x.innov > innov:
+                innov = x.innov
+        
+        return innov
+    
+    def get_edge(self,innov:int):
+        """
+            gets the edge corresponding to innovation number
+            if not found None is returned
+        """
+
+        for x in self.edges:
+            if x.innov == innov:
+                return x
+        return None
+    
     def feedforward(self,x):
         """
             propagates x through network
@@ -189,13 +213,13 @@ class Genome:
             j = np.random.choice(outputs)
             exist = [k for k in range(0,len(self.edges),1) if (self.edges[k].in_node == i and self.edges[k].out_node ==j)]
 
-            while (len(exist)!=0) and (i==j):
+            while (len(exist)!=0) or (i==j):
                 i = np.random.choice(inputs)
                 j = np.random.choice(outputs)
                 exist = [k for k in range(0,len(self.edges),1) if self.edges[k].in_node == i and self.edges[k].out_node ==j]
             
             match = [k for k in range(0,len(connections),1) if connections[k].in_node == i and connections[k].out_node == j]
-
+            
             if len(match)!=0:
                 k = match[0]
                 edge = Edge(connections[k].innov,i,j)
@@ -468,7 +492,7 @@ def init_pop(n_inputs,n_outputs,m):
     
     return pop,costs,connections
 
-def compatability(x,y,c1=1,c2=1,c3=0.4):
+def compatability(x:Genome,y:Genome,count,c1=1,c2=1,c3=0.4):
     """
         determines the compatability between 2 genomes
 
@@ -480,6 +504,67 @@ def compatability(x,y,c1=1,c2=1,c3=0.4):
             c3 (float)  : average matching weight parameter
     """
 
+    E = 0
+    D = 0
+    W = 0
+    match = 0
+
+    max_innov_x = x.get_max_innov()
+    max_innov_y = y.get_max_innov()
+
+    N = max(len(x.edges),len(y.edges))
+
+    if N < 20:
+        N = 1
+
+    for i in range(0,count,1):
+
+        temp1 = x.get_edge(i)
+        temp2 = y.get_edge(i)
+
+        #theres a match#
+        if (temp1 !=None) and (temp2 !=None):
+            average = (temp1.weight + temp2.weight)/2
+            match+=1
+            W+= average
+        elif (temp1!=None) and (temp2==None) and (i < max_innov_y):
+            D+=1
+        elif (temp1==None) and (temp2!=None) and (i < max_innov_x):
+            D+=1
+        elif (temp1!=None) and (temp2==None) and (i > max_innov_y):
+            E+=1
+        elif (temp1==None) and (temp2!=None) and (i > max_innov_x):
+            E+=1
+    
+    if match > 0:
+        W = W/match
+
+    delta = c1*(E/N) + c2*(D/N) + c3*W
+    return delta
+
+def speciation(pop,count,threshold):
+    """
+        performs speciation to determine genomes to be used for
+        next generation
+    """
+
+    species = []
+
+    for x in pop:
+
+        if len(species) != 0:
+
+            match = False
+
+            for i in range(0,len(species),1):
+
+                y = species[i][0]
+                delta = compatability(x, y, count)
+
+        else:
+            new_species = []
+            new_species.append(x)
+            species.append(new_species)
 
 def NEAT(n_inputs,n_outputs,m):
     """
@@ -491,6 +576,7 @@ def NEAT(n_inputs,n_outputs,m):
             n_outputs (int) : number of outputs
             m         (int) : population size
     """
+
     #initialising population#
     pop,costs,connections = init_pop(n_inputs, n_outputs, m)
 
@@ -501,7 +587,27 @@ if __name__=="__main__":
     n_outputs = 1
     m = 5
 
-    pop,costs,connections = init_pop(n_inputs, n_outputs, m)
-    print(costs)
+    connections = []
+    x = Genome(n_inputs=n_inputs,n_outputs=n_outputs,init_pop=True)
+    y = Genome(n_inputs=n_inputs,n_outputs=n_outputs,init_pop=True)
+
+    for i in range(0,15,1):
+        edge = x.add_edge(connections,len(connections))
+
+        if edge!=None:
+            connections.append(edge)
+    
+    edge = y.add_edge(connections,len(connections))
+
+    if edge!=None:
+        connections.append(edge)       
+    
+    print("first genome")
+    x.print_genome()
+    print('\n \nsecond genome')
+    y.print_genome()
+    print("compatability")
+    print(compatability(x, y, len(connections)))
+
     
 
