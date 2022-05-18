@@ -3,6 +3,14 @@ import numpy as np
 import zipfile
 import os
 import pandas as pd
+import gym
+import time
+
+#number of iterations each chromosome trains#
+TRAIN_TIME = 500
+
+#number of iterations for simulation#
+TIME = 500
 
 class Node:
     """
@@ -26,7 +34,7 @@ class Edge:
             in       (int)   : entry node
             out      (int)   : output node
             weight   (float) : value of edge between nodes
-            enabled (bool)  : wether edge enabled or not
+            enabled  (bool)  : wether edge enabled or not
     """
 
     def __init__(self,_innov,_in_node,_out_node,_weight = None,_enabled = 1):
@@ -74,14 +82,6 @@ class Genome:
             for i in range(0,self.n_outputs,1):
                 node = Node(_type="out")
                 self.nodes.append(node)
-    
-            count = 0
-
-            for i in range(0,self.n_inputs,1):
-                for j in range(self.n_inputs,self.n_inputs+self.n_outputs,1):
-                    edge = Edge(_innov=count, _in_node=i, _out_node=j)
-                    self.edges.append(edge)
-                    count+=1
     
     ######################################ACTIVATION_FUNCTIONS#################################################
     def sigmoid(self,x):
@@ -156,6 +156,78 @@ class Genome:
             return y[0]
         else:
             return y
+    
+    def add_edge(self,connections,count):
+
+        I = self.n_inputs
+        O = self.n_outputs
+        H = self.n_hidden
+
+        #no connections availabe#
+        if len(connections) == 0:
+
+            i = np.random.randint(0,I)
+            j = np.random.randint(I,I+O)
+
+            edge = Edge(count,i,j)
+            self.edges.append(edge)
+            return edge
+
+        else:
+            inputs = list(range(0,I,1)) + list(range(I+O,I+O+H,1))
+            outputs = list(range(I,I+O,1)) + list(range(I+O,I+O+H,1))
+
+            #maximum number of edges#
+            max_edges = I*H + I*O + int((H*(H-1))/2) + H*O
+
+            #no new edges to be added#
+            if len(self.edges) == max_edges:
+                return None
+
+            #checking and searching new edges#
+            i = np.random.choice(inputs)
+            j = np.random.choice(outputs)
+            exist = [k for k in range(0,len(self.edges),1) if (self.edges[k].in_node == i and self.edges[k].out_node ==j)]
+
+            while (len(exist)!=0) and (i==j):
+                i = np.random.choice(inputs)
+                j = np.random.choice(outputs)
+                exist = [k for k in range(0,len(self.edges),1) if self.edges[k].in_node == i and self.edges[k].out_node ==j]
+            
+            match = [k for k in range(0,len(connections),1) if connections[k].in_node == i and connections[k].out_node == j]
+
+            if len(match)!=0:
+                k = match[0]
+                edge = Edge(connections[k].innov,i,j)
+                self.edges.append(edge)
+                return None
+            else:
+                edge = Edge(count,i,j)
+                self.edges.append(edge)
+                return edge
+    
+    def add_node(self,count):
+
+        index = len(self.nodes)
+        node = Node(_type="hid")
+        self.nodes.append(node)
+
+        self.n_hidden+=1
+
+        i = np.random.randint(0,len(self.edges))
+        self.edges[i].enabled = 0
+
+        in_node = self.edges[i].in_node
+        out_node = self.edges[i].out_node
+
+        edge1 = Edge(count,in_node,index)
+        edge2 = Edge(count+1,index,out_node)
+
+        self.edges.append(edge1)
+        self.edges.append(edge2)
+
+        return edge1,edge2
+
     #################################################processing functions ####################################
     def print_genome(self):
         """
@@ -322,24 +394,114 @@ class Genome:
                 edge =Edge(innov[i],in_list[i],out_list[i],_weight=weight[i],_enabled=enabled[i])
                 self.edges.append(edge)
 
-            
+###############################NEAT ALGORITHM ####################################################
+
+def simu_fitness(x):
+    """
+        one run of the simulation
+
+        Parameters:
+            x (Genome) : the genome used to determine fitness
+    """
+
+    #add in simulation here#
+    env_name = 'CartPole-v1'
+    env = gym.make(env_name)
+
+    state = env.reset()
+
+    score = 0
+
+    for count in range(TRAIN_TIME):
+        action = x.feedforward(state)
+        state,reward,done,info=env.step(int(action))
+        score+=reward
+
+        if done == True:
+            break
+    
+    env.close()
+    return score
+
+def fitness(x,rep=3):
+    """
+        determines the fitness of the genome
+
+        Parameters:
+            x   (Genome) : network to determine fitness on
+            rep (int)    : number of simulation trials
+    """
+
+    total = 0
+
+    for _ in range(0,rep,1):
+        temp = simu_fitness(x)
+        total+= temp
+    
+    total = total/rep
+    x.fitness = total
+    return total
+
+def init_pop(n_inputs,n_outputs,m):
+    pop = []
+    costs = []
+
+    connections = []
+
+    max_edge = n_inputs * n_outputs
+
+    #creating population#
+    for _ in range(0,m,1):
+        x = Genome(n_inputs=n_inputs,n_outputs=n_outputs,init_pop=True)
+
+        no_edges = np.random.randint(1,max_edge)
+
+        for _ in range(0,no_edges,1):
+            edge = x.add_edge(connections,len(connections))
+            if edge!=None:
+                connections.append(edge)
+        
+        fx = fitness(x)
+
+        pop.append(x)
+        costs.append(fx)
+    
+    return pop,costs,connections
+
+def compatability(x,y,c1=1,c2=1,c3=0.4):
+    """
+        determines the compatability between 2 genomes
+
+        Parameters:
+            x  (Genome) : first genome
+            y  (Genome) : second genome
+            c1 (float)  : excess edge parameter
+            c2 (float)  : disjoint edge parameter
+            c3 (float)  : average matching weight parameter
+    """
+
+
+def NEAT(n_inputs,n_outputs,m):
+    """
+        Algorithm that finds the optimal weights and structure of 
+        Nueral Network
+
+        Parameters:
+            n_inputs  (int) : number of inputs
+            n_outputs (int) : number of outputs
+            m         (int) : population size
+    """
+    #initialising population#
+    pop,costs,connections = init_pop(n_inputs, n_outputs, m)
+
+
 if __name__=="__main__":
 
-    model = Genome(n_inputs=2,n_outputs=1,init_pop=True)
+    n_inputs = 4
+    n_outputs = 1
+    m = 5
+
+    pop,costs,connections = init_pop(n_inputs, n_outputs, m)
+    print(costs)
     
-    x = [1,1]
-
-    print('before saving')
-    model.save_model()
-    print(model.feedforward(x))
-
-    print('loading model')
-    model.load_model()
-    print(model.feedforward(x))
-
-
-    #testing#
-    # x = [1,1]
-    # output = model.feedforward(x)
-    # print(output)
 

@@ -9,7 +9,7 @@ import gym
 import time
 
 #number of iterations each chromosome trains#
-TRAIN_TIME = 1000
+TRAIN_TIME = 500
 
 #number of iterations for simulation#
 TIME = 500
