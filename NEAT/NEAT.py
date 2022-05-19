@@ -5,6 +5,7 @@ import os
 import pandas as pd
 import gym
 import time
+import copy
 
 #number of iterations each chromosome trains#
 TRAIN_TIME = 500
@@ -64,6 +65,7 @@ class Genome:
     def __init__(self,n_inputs=1,n_outputs=1,init_pop=False):
         
         self.fitness = 0
+        self.update_fitness = 0
         self.n_inputs = n_inputs
         self.n_hidden = 0
         self.n_outputs = n_outputs
@@ -104,6 +106,17 @@ class Genome:
         if func== 'relu':
             return self.relu(x)
     #############################################################################################################
+    def updated_fitness(self,n:int):
+        """
+            divides the fitness value of genome based
+            on population of species
+
+            Parameters:
+                n (int) : population size of species genome belongs to
+        """
+
+        self.update_fitness = self.fitness/n
+
     def get_max_innov(self):
         """
             get the maximum innovation number in genome
@@ -418,6 +431,37 @@ class Genome:
                 edge =Edge(innov[i],in_list[i],out_list[i],_weight=weight[i],_enabled=enabled[i])
                 self.edges.append(edge)
 
+##############################QUICKSORT#############################################
+def partition(x:list,left:int,right:int):
+
+    pivot = x[right].update_fitness
+    i = left - 1
+
+    for j in range(left,right,1):
+    
+        if x[j].update_fitness >= pivot:
+            i+=1
+            temp_x = copy.deepcopy(x[i])
+            x[i] = copy.deepcopy(x[j])
+            x[j] = copy.deepcopy(temp_x)
+    
+    temp_x = copy.deepcopy(x[i+1])
+    x[i+1] = copy.deepcopy(x[right])
+    x[right] = copy.deepcopy(temp_x)
+
+    return i+1
+
+def q_sort(x:list,left:int,right:int):
+
+    if left < right:
+        part_index = partition(x, left, right)
+        q_sort(x, left, part_index-1)
+        q_sort(x, part_index+1, right)
+
+def quickSort(x):
+    n = len(x)
+    q_sort(x,0,n-1)
+####################################################################################   
 ###############################NEAT ALGORITHM ####################################################
 
 def simu_fitness(x):
@@ -550,6 +594,7 @@ def speciation(pop,count,threshold):
 
     species = []
 
+    #grouping genomes#
     for x in pop:
 
         if len(species) != 0:
@@ -561,12 +606,49 @@ def speciation(pop,count,threshold):
                 y = species[i][0]
                 delta = compatability(x, y, count)
 
+                if delta < threshold:
+                    species[i].append(x)
+                    match = True
+                    break
+            
+            if match == False:
+                new_species = []
+                new_species.append(x)
+                species.append(new_species)
+
         else:
             new_species = []
             new_species.append(x)
             species.append(new_species)
+    
+    #Computing updated fitness and sorting#
+    for i in range(0,len(species),1):
 
-def NEAT(n_inputs,n_outputs,m):
+        for j in range(0,len(species[i]),1):
+            species[i][j].updated_fitness(len(species[i]))
+        
+        quickSort(species[i])
+    
+
+    new_pop = []
+    for i in range(0,len(species),1):
+
+        n = len(species[i])
+
+        m = n//2
+        if m == 0:
+            m = 1
+    
+        for j in range(0,m,1):
+            new_pop.append(species[i][j])
+    
+    costs = []
+    for x in new_pop:
+        costs.append(x.fitness)
+    
+    return new_pop,costs
+
+def NEAT(n_inputs,n_outputs,m,n):
     """
         Algorithm that finds the optimal weights and structure of 
         Nueral Network
@@ -575,39 +657,32 @@ def NEAT(n_inputs,n_outputs,m):
             n_inputs  (int) : number of inputs
             n_outputs (int) : number of outputs
             m         (int) : population size
+            n         (int) : number of generations
     """
 
     #initialising population#
     pop,costs,connections = init_pop(n_inputs, n_outputs, m)
+
+    for _ in range(0,n,1):
+        x,fx = speciation(pop,len(connections), threshold=1)
+        #TODO: generate new solutions using crossover#
+        #TODO: mutation solutions (add node,add edge,change weight)
 
 
 if __name__=="__main__":
 
     n_inputs = 4
     n_outputs = 1
+    #population size#
     m = 5
+    #number of generations#
+    n = 10
 
-    connections = []
-    x = Genome(n_inputs=n_inputs,n_outputs=n_outputs,init_pop=True)
-    y = Genome(n_inputs=n_inputs,n_outputs=n_outputs,init_pop=True)
+    pop,costs,connections = init_pop(n_inputs, n_outputs, m)
+    print(costs)
+    new_pop,new_costs = speciation(pop,len(connections), threshold=1)
+    print(new_costs)
 
-    for i in range(0,15,1):
-        edge = x.add_edge(connections,len(connections))
-
-        if edge!=None:
-            connections.append(edge)
-    
-    edge = y.add_edge(connections,len(connections))
-
-    if edge!=None:
-        connections.append(edge)       
-    
-    print("first genome")
-    x.print_genome()
-    print('\n \nsecond genome')
-    y.print_genome()
-    print("compatability")
-    print(compatability(x, y, len(connections)))
 
     
 
