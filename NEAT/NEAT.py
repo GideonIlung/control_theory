@@ -482,7 +482,7 @@ def simu_fitness(x):
 
     for count in range(TRAIN_TIME):
         action = x.feedforward(state)
-        state,reward,done,info=env.step(int(action))
+        state,reward,done,info=env.step(int(np.round(action)))
         score+=reward
 
         if done == True:
@@ -631,21 +631,20 @@ def speciation(pop,count,threshold):
     
 
     new_pop = []
+    costs = []
+
     for i in range(0,len(species),1):
 
         n = len(species[i])
 
         m = n//2
-        if m == 0:
-            m = 1
+        # if m == 0:
+        #     m = 1
     
         for j in range(0,m,1):
             new_pop.append(species[i][j])
-    
-    costs = []
-    for x in new_pop:
-        costs.append(x.fitness)
-    
+            costs.append(species[i][j].fitness)
+
     return new_pop,costs
 
 def NEAT(n_inputs,n_outputs,m,n):
@@ -674,14 +673,15 @@ if __name__=="__main__":
     n_inputs = 4
     n_outputs = 1
     #population size#
-    m = 5
+    m = 20
     #number of generations#
     n = 10
 
     pop,costs,connections = init_pop(n_inputs, n_outputs, m)
-    print(costs)
+    print(np.sort(costs).tolist())
+    print('==========================================')
     new_pop,new_costs = speciation(pop,len(connections), threshold=1)
-    print(new_costs)
+    print(np.sort(new_costs).tolist())
 
 
     

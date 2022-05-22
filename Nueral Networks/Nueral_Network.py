@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import zipfile
 import pandas as pd
 import os
-
+import sys
 import gym
 import time
 
@@ -148,11 +148,12 @@ class NN:
     
 ######################################ACTIVATION_FUNCTIONS#################################################
     def sigmoid(self,x):
+        
         value = 1/(1+np.exp(-x))
         return value
     
     def relu(self,x):
-        value = np.max(0,x)
+        value = np.maximum(x, 0)
         return value
     
     def activation_function(self,x,func='sigmoid'):
@@ -184,12 +185,12 @@ class NN:
             z = self.W[i] @ x
 
             #TODO: relu giving issues
-            # if i != len(self.W)-1:
-            #     a = self.activation_function(z,func='relu')
-            # else:
-            #     a = self.activation_function(z,func='sigmoid')
+            if i != len(self.W)-1:
+                a = self.activation_function(z,func='relu')
+            else:
+                a = self.activation_function(z,func='sigmoid')
 
-            a = self.activation_function(z,func='sigmoid')
+            #a = self.activation_function(z,func='sigmoid')
             x = np.copy(a)
 
         if round==True:
@@ -200,7 +201,7 @@ class NN:
         
         return x.flatten() 
 
- ###################################REAL_CODED_GENETIC_ALGORITHM#################################################   
+   
 
     def sim_fitness(self):
         """
@@ -225,7 +226,7 @@ class NN:
         
         env.close()
         return score
-    
+
     def fitness(self,x,shapes,rep=3):
         """
             Determines fitness of the weights
@@ -247,7 +248,8 @@ class NN:
         
         score = score/rep
         return score
-
+    
+###################################REAL_CODED_GENETIC_ALGORITHM################################################# 
     def init_chromosome(self,a,b):
         """
             Initialises a possible solution randomly
@@ -420,49 +422,181 @@ class NN:
         index = np.argmax(costs)
         return pop[index],costs[index]
 
-    def optimise(self,N=100,k=30,m=200,mu=1e-3):
+    
+################################ Particle Swarm Optimisation ###########################
+    def init_agent(self,a,b):
         """
-            Optimises the Neural Network using 
-            Genetic Alogrithm
+            Using real coded genetic algorithm, generates values between
+            a_i and b_i
 
             Parameters:
-                acc (int) : number of decimals solution should be accurate to
-                N   (int) : population size
-                k   (int) : number of elite solutions
-                m   (int) : number of generations
-                mu  (int) : probability of mutation
+                a (list) : lower boundaries of each axis
+                b (list) : upper boundaries of each axis
+            
+            Outputs:
+                x (list) : possible solution
         """
-        
-        a = [] #lower boundaries#
-        b = [] #upper boundaries#
-        shapes = []
 
-        #getting info#
-        for w in self.W:
+        n = len(a)
+        
+        x = []
+
+        for i in range(0,n,1):
+            r = np.random.uniform(0,1)
+
+            #adding 1 to make it inclusive#
+            value = a[i] + (b[i]-a[i])*r
+        
+            x.append(value)
+
+        return x
+    
+    
+    def PSO_init_population(self,a,b,N,shape):
+        """
+            Initialises the population of solutions
+
+            Parameters:
+                a            (list) : lower boundaries
+                b            (list) : upper boundaries
+                N            (int)  : population size
             
-            if len(w.shape)!=1:
-                u,v = w.shape
-            else:
-                u = 1
-                v = len(w)
+            Outputs:
+                pop         (list)  : population of possible solutions
+                local_best  (list)  : list of personal best solutions
+                local_cost  (list)  : list of fitness values corresponding to local best
+                global_best (list)  : current global best solution
+                global_cost (float) : fitness of global best solution
+                costs       (list)  : fitness values of each solution in population
+        """
 
-            shapes.append([u,v])
+        #current location of agents#
+        pop = []
+        costs = []
 
-            boundary = np.sqrt(2/(u+v))
+        #personal best locations#
+        local_best = []
+        local_cost = []
+
+        #global best position
+        global_best = None
+        global_cost = None
+
+        for _ in range(0,N,1):
+            x = self.init_agent(a,b)
+            fx = self.fitness(x,shape)
+
+            #adding to population#
+            pop.append(x)
+            costs.append(fx)
+
+            #adding to local best#
+            local_best.append(x)
+            local_cost.append(fx)
+
+            if global_best == None:
+                global_best = x.copy()
+                global_cost = fx
+            elif fx > global_cost:
+                global_best = x.copy()
+                global_cost = fx
+        
+        return pop,costs,local_best,local_cost,global_best,global_cost
+
+    def direction_vector(self,p_best,g_best,pos,c1,c2):
+        """
+            Computes the direction vector using line search
+
+            Parameters:
+                c1      (float) : parameter on first vector
+                c2      (float) : parameter on second vector
+                p_best  (list)  : personal best location
+                g_best  (list)  : global best location
+                pos     (list)  : current position
             
-            for _ in range(0,u*v,1):
-                a.append(-boundary)
-                b.append(boundary)
+            Output
+                d       (list)  : direction vector
+        """
+
+        #copying values#
+        p = np.array(p_best.copy())
+        g = np.array(g_best.copy())
+        x = np.array(pos.copy())
+
+        #random values#
+        r1 = np.random.uniform(0,1)
+        r2 = np.random.uniform(0,1)
+
+        u = c1 * r1 * (p-x) 
+        v = c2 * r2 * (g-x)
+
+        d = u + v
+        return d
+
+    def update_pos(self,p_best,g_best,pos,shape,c1,c2):
+        """
+            determines next position using direction vector
+
+            Parameters:
+                c1      (float) : parameter on first vector
+                c2      (float) : parameter on second vector
+                p_best  (list)  : personal best location
+                g_best  (list)  : global best location
+                pos     (list)  : current position
+            
+            Output
+                x       (list)  : updated position
+        """
+        x = np.copy(pos.copy())
+
+        #update this for conjugate gradient#
+        d = self.direction_vector(p_best,g_best,pos,c1=c1,c2=c2)
+
+        xnew = x + d
+        xnew = xnew.tolist()
+
+        fx = self.fitness(xnew,shape)
+        return xnew,fx
+
+    def PSO(self,a,b,M,N,shape,c1=10,c2=10):
+        """
+            Optimises function using Particle Swarm Optimisation
+
+            Parameters:
+                a      (list) : lower boundaries
+                b      (list) : upper boundaries
+                M      (int)  : population size
+                N      (int)  : number of iterations
+                shapes (list) : shapes of weight matrices
+        """
+
+        #initalising population#
+        pop,costs,local_best,local_cost,global_best,global_cost = self.PSO_init_population(a, b, M,shape)
+
+        for _ in range(0,N,1):
+            
+            #updating agents#
+            for i in range(0,M,1):
+
+                #new position#
+                x,fx = self.update_pos(local_best[i],global_best,pop[i],shape,c1, c2)
+
+                pop[i] = x.copy()
+                costs[i] = fx
+
+                #updating personal best#
+                if fx > local_cost[i]:
+                    local_best[i] = x.copy()
+                    local_cost[i] = fx
+                
+                #updating global best#
+                if fx > global_cost:
+                    global_best = x.copy()
+                    global_cost = fx
         
+        return global_best,global_cost
 
-        weights,cost = self.GA(a, b, shapes,N,k,m,mu)
-        print(cost)
-        self.reconstruct(weights, shapes)
-        self.save_model()
-
-        
-
-    ##############################QUICKSORT#############################################
+#################################QUICKSORT#############################################
     def partition(self,x,fx,left:int,right:int):
 
         pivot = fx[right]
@@ -503,12 +637,57 @@ class NN:
     def quickSort(self,x,fx):
         n = len(x)
         self.q_sort(x, fx,0,n-1)
-    ####################################################################################    
+######################################################################################## 
+#####################################Optimiser ########################################## 
+    def optimise(self,N=100,k=30,m=200,mu=1e-3,opti="GA"):
+        """
+            Optimises the Neural Network using 
+            Genetic Alogrithm
+
+            Parameters:
+                acc (int) : number of decimals solution should be accurate to
+                N   (int) : population size
+                k   (int) : number of elite solutions
+                m   (int) : number of generations
+                mu  (int) : probability of mutation
+        """
+        
+        a = [] #lower boundaries#
+        b = [] #upper boundaries#
+        shapes = []
+
+        #getting info#
+        for w in self.W:
+            
+            if len(w.shape)!=1:
+                u,v = w.shape
+            else:
+                u = 1
+                v = len(w)
+
+            shapes.append([u,v])
+
+            boundary = np.sqrt(2/(u+v))
+            
+            for _ in range(0,u*v,1):
+                a.append(-boundary)
+                b.append(boundary)
+        
+
+        if opti == "GA":
+            weights,cost = self.GA(a, b, shapes,N,k,m,mu)
+        elif opti == "PSO":
+            weights,cost = self.PSO(a, b, N,m, shapes)
+        
+        print(cost)
+        self.reconstruct(weights, shapes)
+        self.save_model()
+
 
 if __name__ == '__main__':
     shape = [4,4,1]
     model = NN(shape)
-    #model.optimise()
+    model.optimise(opti="PSO")
 
     model.load_model()
 
