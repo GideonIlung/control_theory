@@ -6,6 +6,7 @@ import pandas as pd
 import gym
 import time
 import copy
+import matplotlib.pyplot as plt
 
 #number of iterations each chromosome trains#
 TRAIN_TIME = 500
@@ -264,6 +265,20 @@ class Genome:
         self.edges.append(edge2)
 
         return edge1,edge2
+    
+    def mutate_weight(self,mu):
+
+        change = False
+
+        for x in self.edges:
+
+            r = np.random.uniform(0,1)
+
+            if r < mu:
+                x.weight = x.weight + np.random.uniform(0,0.5)
+                change = True
+        
+        return change
 
     #################################################processing functions ####################################
     def print_genome(self):
@@ -631,8 +646,6 @@ def speciation(pop,count,threshold):
     
 
     new_pop = []
-    costs = []
-
     for i in range(0,len(species),1):
 
         n = len(species[i])
@@ -643,30 +656,237 @@ def speciation(pop,count,threshold):
     
         for j in range(0,m,1):
             new_pop.append(species[i][j])
-            costs.append(species[i][j].fitness)
-
+    
+    costs = []
+    for x in new_pop:
+        costs.append(x.fitness)
+    
     return new_pop,costs
 
-def NEAT(n_inputs,n_outputs,m,n):
+def crossover(x:Genome,y:Genome,connections:list):
+
+    #parent fitness#
+    fx = x.fitness
+    fy = y.fitness
+
+    #number of inputs#
+    I = x.n_inputs
+
+    #number of outputs
+    O = x.n_outputs
+
+    #nodes for new genome#
+    nodes = []
+
+    for _ in range(0,I,1):
+        node = Node(_type="in")
+        nodes.append(node)
+    
+    for _ in range(0,O,1):
+        node = Node(_type="out")
+        nodes.append(node)
+
+    #edges of new genome
+    edges = []
+
+    for i in range(0,len(connections),1):
+
+        temp1 = None
+        temp2 = None
+        
+        u = connections[i].in_node
+        v = connections[i].out_node
+
+        x_match = [k for k in x.edges if (k.in_node == u) and (k.out_node == v)]
+        y_match = [k for k in y.edges if (k.in_node == u) and (k.out_node == v)]
+
+        if len(x_match) != 0:
+            temp1 = copy.deepcopy(x_match[0])
+        
+        if len(y_match) != 0:
+            temp2 = copy.deepcopy(y_match[0])
+        
+        #if both parents have edge#
+        if (temp1 != None) and (temp2!=None):
+
+            r = np.random.uniform(0,1)
+
+            if r < 0.5:
+                edges.append(temp1)
+            else:
+                edges.append(temp2)
+        
+        else:
+
+            new_edge = None
+
+            if fx == fy:
+
+                if temp1 != None:
+                    new_edge = temp1
+                else:
+                    new_edge = temp2
+
+            elif fx > fy:
+                new_edge = temp1
+            elif fx < fy :
+                new_edge = temp2     
+
+            if new_edge != None:
+                edges.append(new_edge)
+    
+
+    max_node = -1
+
+    for x in edges:
+
+        if x.in_node > max_node:
+            max_node = x.in_node
+        
+        if x.out_node > max_node:
+            max_node = x.out_node
+    
+    H = max_node + 1 - I - O
+
+    for _ in range(0,H,1):
+        node = Node(_type="hid")
+        nodes.append(node)
+    
+    #creating child#
+    child = Genome(n_inputs=I,n_outputs=O)
+    child.n_hidden = H
+    child.nodes = nodes
+    child.edges = edges
+
+    fchild = fitness(child)
+    child.fitness = fchild
+    return child,fchild
+
+def NEAT(n_inputs,n_outputs,m,n,mu_link=0.4,mu_node=0.3,mu_edge=0.2):
     """
         Algorithm that finds the optimal weights and structure of 
         Nueral Network
 
         Parameters:
-            n_inputs  (int) : number of inputs
-            n_outputs (int) : number of outputs
-            m         (int) : population size
-            n         (int) : number of generations
+            n_inputs  (int)   : number of inputs
+            n_outputs (int)   : number of outputs
+            m         (int)   : population size
+            n         (int)   : number of generations
+            mu_link   (float) : probability of adding edge
+            mu_node   (float) : probability of adding node
+            mu_edge   (float) : probability of mutating edge
+
     """
 
     #initialising population#
     pop,costs,connections = init_pop(n_inputs, n_outputs, m)
 
     for _ in range(0,n,1):
-        x,fx = speciation(pop,len(connections), threshold=1)
-        #TODO: generate new solutions using crossover#
-        #TODO: mutation solutions (add node,add edge,change weight)
+        new_pop,new_costs = speciation(pop,len(connections), threshold=1)
 
+        #creating children via crossover#
+        n_children = m - len(new_pop)
+
+        for _ in range(0,n_children,1):
+
+            i = 0
+            j = 0
+
+            while (i == j):
+                i = np.random.randint(0,len(new_pop)) 
+                j = np.random.randint(0,len(new_pop))
+            
+            p1 = new_pop[i]
+            p2 = new_pop[j]
+
+            x,fx = crossover(p1, p2, connections)
+            new_pop.append(x)
+            new_costs.append(fx)
+        
+
+        #mutating links#
+        if mu_link > 0:
+            for x in new_pop:
+
+                change = False
+                r = np.random.uniform(0,1)
+    
+                if r < mu_link:
+                    edge = x.add_edge(connections,len(connections))
+                    change = True
+                    if edge != None:
+                        connections.append(edge)
+                
+                if change == True:
+                    fx = fitness(x)
+                    x.fitness = fx
+
+        #mutating nodes#
+        if mu_node > 0:
+            for x in new_pop:
+                change = False
+                r = np.random.uniform(0,1)
+
+                if r < mu_node:
+                    change = True
+                    edge1,edge2 = x.add_node(len(connections))
+
+                    if edge1!=None:
+                        connections.append(edge1)
+                    
+                    if edge2!=None:
+                        connections.append(edge2)
+        
+        if mu_edge > 0 :
+            for x in new_pop:
+                change = x.mutate_weight(mu_edge)
+                if change == True:
+                    fx = fitness(x)
+                    x.fitness = fx
+
+        pop = copy.deepcopy(new_pop)
+        costs = []
+
+        for x in pop:
+            costs.append(x.fitness)
+    
+    index = np.argmax(costs)
+    x = pop[index]
+    fx = costs[index]
+    return x,fx
+
+
+def run(I,O):
+    model = Genome(I,O)
+    model.load_model()
+
+    env_name = 'CartPole-v1'
+    env = gym.make(env_name)
+    state = env.reset()
+
+    error = []
+    render = False
+
+    for _ in range(TIME):
+        
+        #plotting#
+        error.append(state[2])
+
+        action = model.feedforward(state)
+        state,reward,done,info=env.step(int(np.round(action)))
+
+        if render == True:
+            env.render()
+            time.sleep(0.08)
+
+        if done == True:
+            state = env.reset()
+    
+    env.close()
+
+    if render == False:
+        plt.plot(error,label='error')
+        plt.show()
 
 if __name__=="__main__":
 
@@ -675,14 +895,11 @@ if __name__=="__main__":
     #population size#
     m = 20
     #number of generations#
-    n = 10
+    n = 30
 
-    pop,costs,connections = init_pop(n_inputs, n_outputs, m)
-    print(np.sort(costs).tolist())
-    print('==========================================')
-    new_pop,new_costs = speciation(pop,len(connections), threshold=1)
-    print(np.sort(new_costs).tolist())
+    #OPTIMISATION#
+    # x,fx = NEAT(n_inputs, n_outputs, m, n)
+    # x.save_model()
+    # print(fx)
 
-
-    
-
+    run(n_inputs, n_outputs)
