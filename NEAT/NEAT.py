@@ -888,6 +888,52 @@ def run(I,O):
         plt.plot(error,label='error')
         plt.show()
 
+def analysis(I, O,rep = 30):
+    model = Genome(I,O)
+    model.load_model()
+
+    env_name = 'CartPole-v1'
+    env = gym.make(env_name)
+
+    errors = []
+
+    for i in range(0,rep,1):
+        state = env.reset()
+        error = []
+        render = False
+
+        for _ in range(TIME):
+            
+            #plotting#
+            error.append(state[2])
+
+            action = model.feedforward(state)
+            state,reward,done,info=env.step(int(np.round(action)))
+
+            if done == True:
+                break
+        
+        errors.append(error)
+    env.close()
+
+    X = np.array(errors)
+
+    M,N = X.shape
+
+    mean = []
+    std = []
+
+    for i in range(0,N,1):
+        mean.append(X[:,i].mean())
+        std.append(X[:,i].std())
+    
+    plt.plot(mean,label='mean u')
+    plt.plot(std,label = 'std u')
+    plt.ylabel(r'displacement $\theta$')
+    plt.xlabel(r'time $t$')
+    plt.legend(loc='best')
+    plt.show()
+
 if __name__=="__main__":
 
     n_inputs = 4
@@ -902,4 +948,5 @@ if __name__=="__main__":
     # x.save_model()
     # print(fx)
 
-    run(n_inputs, n_outputs)
+    #run(n_inputs, n_outputs)
+    analysis(n_inputs, n_outputs,rep = 30)
