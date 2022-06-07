@@ -895,15 +895,20 @@ def analysis(I, O,rep = 30):
     env_name = 'CartPole-v1'
     env = gym.make(env_name)
 
+    init_state = np.array([0.01,0.01,0.01,0.01])
     errors = []
+    
+    mean = []
+    std = []
 
     for i in range(0,rep,1):
         state = env.reset()
+        env.state = init_state
+        state = env.state
         error = []
-        render = False
 
         for _ in range(TIME):
-            
+        
             #plotting#
             error.append(state[2])
 
@@ -914,26 +919,29 @@ def analysis(I, O,rep = 30):
                 break
         
         errors.append(error)
+    
     env.close()
 
     X = np.array(errors)
 
     M,N = X.shape
 
-    mean = []
-    std = []
-
     for i in range(0,N,1):
-        mean.append(X[:,i].mean())
+
+        value = X[:,i].mean()
         std.append(X[:,i].std())
+        mean.append(value)
     
-    plt.plot(mean,label='mean u')
-    plt.plot(std,label = 'std u')
+    mean = np.array(mean)
+    std = np.array(std)
+
+    t = np.arange(len(mean))
+    plt.plot(mean,label='mean displacement')
+    plt.fill_between(t,mean - std, mean + std, color='b', alpha=0.2)
     plt.ylabel(r'displacement $\theta$')
     plt.xlabel(r'time $t$')
     plt.legend(loc='best')
     plt.show()
-
 if __name__=="__main__":
 
     n_inputs = 4
