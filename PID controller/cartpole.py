@@ -2,10 +2,11 @@
 import gym
 import time
 import numpy as np
+import matplotlib.pyplot as plt 
 
 #CONSTANTS
-TIME_STEP = 0.1
-N_ITER = 100
+TIME_STEP = 0.01
+N_ITER = 500
 SETPOINT = 0  # angle of pole must be zero
 #-----------------
 
@@ -128,11 +129,68 @@ def Simulate(n,h,param,setpoint):
     env.close()
 
 
+def results(rep=30):
+
+    env_name = 'CartPole-v1'
+    env = gym.make(env_name)
+
+    init_state = np.array([0.01,0.01,0.01,0.01])
+    #creating PID controller#
+    controller = PID(KP,KI,KD,TIME_STEP,SETPOINT)
+
+    errors = []
+    mean = []
+    std = []
+
+    for _ in range(0,rep,1):
+        
+        controller.reset()
+        state = env.reset()
+        env.state = init_state
+        state = env.state
+
+        error = []
+
+        for i in range(0,N_ITER,1):
+
+            error.append(state[2])
+
+            action = controller.action(state[2],state[3])
+            state,reward,done,info=env.step(action)
+
+
+            if done == True:
+                state = env.reset()
+                controller.reset()
+
+        errors.append(error)
+    
+    X = np.array(errors)
+    M,N = X.shape
+
+    for i in range(0,N,1):
+
+        value = X[:,i].mean()
+        std.append(X[:,i].std())
+        mean.append(value)
+    
+    mean = np.array(mean)
+    std = np.array(std)
+
+    t = np.arange(len(mean))
+    plt.plot(mean,label='mean displacement')
+    plt.fill_between(t,mean - std, mean + std, color='b', alpha=0.2)
+    plt.ylabel(r'displacement $\theta$')
+    plt.xlabel(r'time $t$')
+    plt.legend(loc='best')
+    plt.show()
+
 def main():
     param = [KP,KI,KD]
     h = TIME_STEP
     n = N_ITER
-    Simulate(n, h, param,SETPOINT)
+    #Simulate(n, h, param,SETPOINT)
+    results()
 
 main()
 
