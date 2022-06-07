@@ -179,18 +179,22 @@ class NN:
         for i in range(len(self.W)):
 
             #stacking#
-            v = np.ones((1,len(x[0,:])))
+            if len(x.shape)>1:
+                v = np.ones((1,len(x[0,:])))
+            else:
+                v = np.ones(1)
+            
             x = np.vstack((v,x))
 
             z = self.W[i] @ x
 
             #TODO: relu giving issues
-            if i != len(self.W)-1:
-                a = self.activation_function(z,func='relu')
-            else:
-                a = self.activation_function(z,func='sigmoid')
+            # if i != len(self.W)-1:
+            #     a = self.activation_function(z,func='relu')
+            # else:
+            #     a = self.activation_function(z,func='sigmoid')
 
-            #a = self.activation_function(z,func='sigmoid')
+            a = self.activation_function(z,func='sigmoid')
             x = np.copy(a)
 
         if round==True:
@@ -219,7 +223,7 @@ class NN:
         for count in range(TRAIN_TIME):
             action = self.feedfoward(state)
             state,reward,done,info=env.step(int(action))
-            score+=reward
+            score+=reward - state[2]**2
 
             if done == True:
                 break
@@ -533,7 +537,7 @@ class NN:
         d = u + v
         return d
 
-    def update_pos(self,p_best,g_best,pos,shape,c1,c2):
+    def update_pos(self,p_best,g_best,pos,shape,c1,c2,a,b):
         """
             determines next position using direction vector
 
@@ -543,6 +547,8 @@ class NN:
                 p_best  (list)  : personal best location
                 g_best  (list)  : global best location
                 pos     (list)  : current position
+                a       (list)  : lower boundaries
+                b       (list)  : upper boundaries
             
             Output
                 x       (list)  : updated position
@@ -555,10 +561,18 @@ class NN:
         xnew = x + d
         xnew = xnew.tolist()
 
+        #making sure doesnt leave boundaries#
+        for i in range(0,len(xnew),1):
+
+            if (xnew[i] < a[i]) or (xnew[i]>b[i]):
+                r = np.random.uniform(0,1)
+                xnew[i] = a[i] + (b[i]-a[i])*r
+
+
         fx = self.fitness(xnew,shape)
         return xnew,fx
 
-    def PSO(self,a,b,M,N,shape,c1=10,c2=10):
+    def PSO(self,a,b,M,N,shape,c1=2,c2=2):
         """
             Optimises function using Particle Swarm Optimisation
 
@@ -579,7 +593,7 @@ class NN:
             for i in range(0,M,1):
 
                 #new position#
-                x,fx = self.update_pos(local_best[i],global_best,pop[i],shape,c1, c2)
+                x,fx = self.update_pos(local_best[i],global_best,pop[i],shape,c1, c2,a,b)
 
                 pop[i] = x.copy()
                 costs[i] = fx
@@ -724,10 +738,16 @@ def analysis(shape,name,rep = 30):
 
     env_name = 'CartPole-v1'
     env = gym.make(env_name)
+
+    init_state = np.array([0.01,0.01,0.01,0.01])
     errors = []
+    std = []
+    mean = []
 
     for i in range(0,rep,1):
         state = env.reset()
+        env.state = init_state
+        state = env.state
         error = []
 
         for _ in range(TIME):
@@ -749,15 +769,18 @@ def analysis(shape,name,rep = 30):
 
     M,N = X.shape
 
-    mean = []
-    std = []
-
     for i in range(0,N,1):
-        mean.append(X[:,i].mean())
+
+        value = X[:,i].mean()
         std.append(X[:,i].std())
+        mean.append(value)
     
-    plt.plot(mean,label='mean u')
-    plt.plot(std,label = 'std u')
+    mean = np.array(mean)
+    std = np.array(std)
+
+    t = np.arange(len(mean))
+    plt.plot(mean,label='mean displacement')
+    plt.fill_between(t,mean - std, mean + std, color='b', alpha=0.2)
     plt.ylabel(r'displacement $\theta$')
     plt.xlabel(r'time $t$')
     plt.legend(loc='best')
@@ -765,7 +788,7 @@ def analysis(shape,name,rep = 30):
 
 if __name__ == '__main__':
     shape = [4,4,1]
-    #model = NN(shape)
-    #model.optimise(opti="PSO")
-    analysis(shape,name="GA_model.zip")
+    model = NN(shape)
+    model.optimise(opti="PSO")
+    #analysis(shape,name="output.zip")
     
