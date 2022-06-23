@@ -2,7 +2,16 @@
 import gym
 import time
 import numpy as np
+import matplotlib
 import matplotlib.pyplot as plt 
+from tikzplotlib import save as tikz_save
+# matplotlib.use("pgf")
+# matplotlib.rcParams.update({
+#     "pgf.texsystem": "pdflatex",
+#     'font.family': 'serif',
+#     'text.usetex': True,
+#     'pgf.rcfonts': False,
+# })
 
 #CONSTANTS
 TIME_STEP = 0.01
@@ -183,7 +192,9 @@ def results(rep=30):
     plt.ylabel(r'displacement $\theta$')
     plt.xlabel(r'time $t$')
     plt.legend(loc='best')
-    plt.show()
+    tikz_save('PID_plot.tikz',figureheight = '\\figureheight',figurewidth='\\figurewidth')
+    #plt.savefig('PID_plot.pgf')
+    #plt.show()
 
 def main():
     param = [KP,KI,KD]

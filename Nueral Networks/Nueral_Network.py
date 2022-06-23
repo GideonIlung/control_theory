@@ -702,7 +702,7 @@ def run(shape):
     model = NN(shape)
     #model.optimise(opti="PSO")
 
-    model.load_model()
+    model.load_model(filename='GA_model.zip')
 
     env_name = 'CartPole-v1'
     env = gym.make(env_name)
@@ -789,6 +789,7 @@ def analysis(shape,name,rep = 30):
 if __name__ == '__main__':
     shape = [4,4,1]
     model = NN(shape)
-    model.optimise(opti="PSO")
-    #analysis(shape,name="output.zip")
+    #model.optimise(opti="PSO")
+    analysis(shape,name="GA_model.zip")
+    #run(shape)
     

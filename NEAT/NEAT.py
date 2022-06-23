@@ -856,7 +856,7 @@ def NEAT(n_inputs,n_outputs,m,n,mu_link=0.4,mu_node=0.3,mu_edge=0.2):
     return x,fx
 
 
-def run(I,O):
+def run(I,O,render):
     model = Genome(I,O)
     model.load_model()
 
@@ -865,7 +865,6 @@ def run(I,O):
     state = env.reset()
 
     error = []
-    render = False
 
     for _ in range(TIME):
         
@@ -954,7 +953,9 @@ if __name__=="__main__":
     #OPTIMISATION#
     # x,fx = NEAT(n_inputs, n_outputs, m, n)
     # x.save_model()
+    # x.print_genome()
     # print(fx)
 
     #run(n_inputs, n_outputs)
-    analysis(n_inputs, n_outputs,rep = 30)
+    #analysis(n_inputs, n_outputs,rep = 30)
+    run(n_inputs, n_outputs,render=True)
