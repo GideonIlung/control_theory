@@ -150,6 +150,7 @@ def results(rep=30):
     errors = []
     mean = []
     std = []
+    time_data = []
 
     for _ in range(0,rep,1):
         
@@ -163,8 +164,12 @@ def results(rep=30):
         for i in range(0,N_ITER,1):
 
             error.append(state[2])
-
+            
+            start = time.time()
             action = controller.action(state[2],state[3])
+            end = time.time()
+            time_length = end-start
+            time_data.append(time_length)
             state,reward,done,info=env.step(action)
 
 
@@ -183,8 +188,12 @@ def results(rep=30):
         std.append(X[:,i].std())
         mean.append(value)
     
+
     mean = np.array(mean)
     std = np.array(std)
+
+    time_data = np.array(time_data)
+    print("average response time: ",time_data.mean()*1000, " milliseconds")
 
     t = np.arange(len(mean))
     plt.plot(mean,label='mean displacement')

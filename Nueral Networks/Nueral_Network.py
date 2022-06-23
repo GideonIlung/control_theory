@@ -744,6 +744,8 @@ def analysis(shape,name,rep = 30):
     std = []
     mean = []
 
+    time_data = []
+
     for i in range(0,rep,1):
         state = env.reset()
         env.state = init_state
@@ -755,7 +757,10 @@ def analysis(shape,name,rep = 30):
             #plotting#
             error.append(state[2])
 
+            start = time.time()
             action = model.feedfoward(state)
+            end = time.time()
+            time_data.append(end-start)
             state,reward,done,info=env.step(int(action))
 
             if done == True:
@@ -775,8 +780,39 @@ def analysis(shape,name,rep = 30):
         std.append(X[:,i].std())
         mean.append(value)
     
+    time_data = np.array(time_data)
+    response_time = time_data.mean()*1000
+
+    #######saving results to text file##################################
+    resultsfile = open('GA_results.txt','w')
+
+    lines = []
+
+    #looping through mean values#
+    string = str(mean[0])
+
+    for i in range(1,len(mean),1):
+        string = string + ',' + str(mean[i])
+    
+    string = string + '\n'
+    resultsfile.writelines(string)
+
+    #looping through std values#
+    string = str(std[0])
+
+    for i in range(1,len(std),1):
+        string = string + ',' + str(std[i])
+    string = string + '\n'
+    resultsfile.writelines(string)
+    resultsfile.writelines(str(response_time))
+    resultsfile.close()
+    ##################################################
+
     mean = np.array(mean)
     std = np.array(std)
+
+    
+    print("average response time: ",response_time, " milliseconds")
 
     t = np.arange(len(mean))
     plt.plot(mean,label='mean displacement')
