@@ -223,7 +223,8 @@ class NN:
         for count in range(TRAIN_TIME):
             action = self.feedfoward(state)
             state,reward,done,info=env.step(int(action))
-            score+=reward - state[2]**2
+            #score+=reward - state[2]**2
+            score+=reward
 
             if done == True:
                 break
@@ -380,7 +381,7 @@ class NN:
             return pop[j]
     
 
-    def GA(self,a,b,shapes,N,k,m,mu):
+    def GA(self,a,b,shapes,N,k,m,mu,get_iter=False):
         """
             Optimises the Neural Network using 
             Genetic Alogrithm
@@ -404,7 +405,7 @@ class NN:
 
         pop,costs = self.init_population(a, b, N, shapes)
         
-        for _ in range(0,m,1):
+        for count in range(0,m,1):
             x,fx = self.elitism(pop, costs, k)
 
             #creating children#
@@ -422,6 +423,12 @@ class NN:
             #updating generation#
             pop = x.copy()
             costs = fx.copy()
+
+            if get_iter==True and np.max(costs) == 500:
+                return None, count+1
+        
+        if get_iter == True:
+            return m
         
         index = np.argmax(costs)
         return pop[index],costs[index]
@@ -572,7 +579,7 @@ class NN:
         fx = self.fitness(xnew,shape)
         return xnew,fx
 
-    def PSO(self,a,b,M,N,shape,c1=2,c2=2):
+    def PSO(self,a,b,M,N,shape,c1=2,c2=2,get_iter=False):
         """
             Optimises function using Particle Swarm Optimisation
 
@@ -585,9 +592,10 @@ class NN:
         """
 
         #initalising population#
+        iteration = None
         pop,costs,local_best,local_cost,global_best,global_cost = self.PSO_init_population(a, b, M,shape)
 
-        for _ in range(0,N,1):
+        for count in range(0,N,1):
             
             #updating agents#
             for i in range(0,M,1):
@@ -607,8 +615,15 @@ class NN:
                 if fx > global_cost:
                     global_best = x.copy()
                     global_cost = fx
+            
+            if (get_iter == True) and (global_cost == 500):
+                return None,count+1
+        
+        if get_iter == True:
+            return N
         
         return global_best,global_cost
+        
 
 #################################QUICKSORT#############################################
     def partition(self,x,fx,left:int,right:int):
@@ -653,13 +668,12 @@ class NN:
         self.q_sort(x, fx,0,n-1)
 ######################################################################################## 
 #####################################Optimiser ########################################## 
-    def optimise(self,N=100,k=30,m=200,mu=1e-3,opti="GA"):
+    def optimise(self,N=100,k=30,m=200,mu=1e-3,opti="GA",get_iter=False):
         """
             Optimises the Neural Network using 
             Genetic Alogrithm
 
             Parameters:
-                acc (int) : number of decimals solution should be accurate to
                 N   (int) : population size
                 k   (int) : number of elite solutions
                 m   (int) : number of generations
@@ -689,15 +703,18 @@ class NN:
         
 
         if opti == "GA":
-            weights,cost = self.GA(a, b, shapes,N,k,m,mu)
+            weights,cost = self.GA(a, b, shapes,N,k,m,mu,get_iter=get_iter)
         elif opti == "PSO":
-            weights,cost = self.PSO(a, b, N,m, shapes)
+            weights,cost = self.PSO(a, b, N,m, shapes,get_iter=get_iter)
         
-        print(cost)
-        self.reconstruct(weights, shapes)
-        self.save_model()
+        if get_iter == False:
+            print(cost)
+            self.reconstruct(weights, shapes)
+            self.save_model()
+        else:
+            return cost
 
-
+######################################################################################################
 def run(shape):
     model = NN(shape)
     #model.optimise(opti="PSO")
@@ -822,10 +839,28 @@ def analysis(shape,name,rep = 30):
     plt.legend(loc='best')
     plt.show()
 
+
+#############################LEARNING RATE COMPARISION##########################################
+def learn_rate(shape,rep=30):
+    output = []
+    model = NN(shape)
+
+    for _ in range(0,rep,1):
+        temp = model.optimise(opti="GA",get_iter=True)
+        print(temp)
+        output.append(temp)
+
+    d = {'values':output}
+    data = pd.DataFrame(d)
+    data.to_csv("GA_learn_rate.csv")
+    print("mean: ",data['values'].mean())
+
+
 if __name__ == '__main__':
     shape = [4,4,1]
-    model = NN(shape)
-    #model.optimise(opti="PSO")
-    analysis(shape,name="GA_model.zip")
-    #run(shape)
+    # model = NN(shape)
+    # #model.optimise(opti="PSO")
+    # analysis(shape,name="GA_model.zip")
+    # #run(shape)
+    learn_rate(shape)
     

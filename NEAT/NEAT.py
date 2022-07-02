@@ -7,6 +7,7 @@ import gym
 import time
 import copy
 import matplotlib.pyplot as plt
+from tikzplotlib import save as tikz_save
 
 #number of iterations each chromosome trains#
 TRAIN_TIME = 500
@@ -762,7 +763,7 @@ def crossover(x:Genome,y:Genome,connections:list):
     child.fitness = fchild
     return child,fchild
 
-def NEAT(n_inputs,n_outputs,m,n,mu_link=0.4,mu_node=0.3,mu_edge=0.2):
+def NEAT(n_inputs,n_outputs,m,n,mu_link=0.4,mu_node=0.3,mu_edge=0.2,get_iter=False):
     """
         Algorithm that finds the optimal weights and structure of 
         Nueral Network
@@ -781,7 +782,7 @@ def NEAT(n_inputs,n_outputs,m,n,mu_link=0.4,mu_node=0.3,mu_edge=0.2):
     #initialising population#
     pop,costs,connections = init_pop(n_inputs, n_outputs, m)
 
-    for _ in range(0,n,1):
+    for count in range(0,n,1):
         new_pop,new_costs = speciation(pop,len(connections), threshold=1)
 
         #creating children via crossover#
@@ -849,6 +850,12 @@ def NEAT(n_inputs,n_outputs,m,n,mu_link=0.4,mu_node=0.3,mu_edge=0.2):
 
         for x in pop:
             costs.append(x.fitness)
+        
+        if (get_iter == True) and (np.max(costs) == 500):
+            return None,count+1
+    
+    if get_iter == True:
+        return None,n+1
     
     index = np.argmax(costs)
     x = pop[index]
@@ -899,6 +906,7 @@ def analysis(I, O,rep = 30):
     
     mean = []
     std = []
+    time_data = []
 
     for i in range(0,rep,1):
         state = env.reset()
@@ -910,8 +918,10 @@ def analysis(I, O,rep = 30):
         
             #plotting#
             error.append(state[2])
-
+            start = time.time()
             action = model.feedforward(state)
+            end = time.time()
+            time_data.append(end-start)
             state,reward,done,info=env.step(int(np.round(action)))
 
             if done == True:
@@ -931,8 +941,15 @@ def analysis(I, O,rep = 30):
         std.append(X[:,i].std())
         mean.append(value)
     
+    time_data = np.array(time_data)
+    response_time = time_data.mean()*1000
+
     mean = np.array(mean)
     std = np.array(std)
+
+    print("average response time: ",response_time, " milliseconds")
+    print("average error ",np.abs(mean).mean())
+    print('average std error' ,np.abs(std).std())
 
     t = np.arange(len(mean))
     plt.plot(mean,label='mean displacement')
@@ -940,7 +957,22 @@ def analysis(I, O,rep = 30):
     plt.ylabel(r'displacement $\theta$')
     plt.xlabel(r'time $t$')
     plt.legend(loc='best')
+    tikz_save('NEAT_plot.tikz')
     plt.show()
+
+def learn_rate(I,O,rep=30):
+    
+    output = []
+
+    for _ in range(0,rep,1):
+        _,temp = NEAT(I,O, m=20, n=30,get_iter=True)
+        output.append(temp)
+
+    d = {'values':output}
+    data = pd.DataFrame(d)
+    data.to_csv("NEAT_learn_rate.csv")
+    print("mean: ",data['values'].mean())
+
 if __name__=="__main__":
 
     n_inputs = 4
@@ -958,4 +990,6 @@ if __name__=="__main__":
 
     #run(n_inputs, n_outputs)
     #analysis(n_inputs, n_outputs,rep = 30)
-    run(n_inputs, n_outputs,render=True)
+    #run(n_inputs, n_outputs,render=True)
+
+    learn_rate(n_inputs,n_outputs)

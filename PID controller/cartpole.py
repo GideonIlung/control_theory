@@ -194,6 +194,8 @@ def results(rep=30):
 
     time_data = np.array(time_data)
     print("average response time: ",time_data.mean()*1000, " milliseconds")
+    print("average error: ",np.abs(mean).mean())
+    print("std:",np.abs(mean).std())
 
     t = np.arange(len(mean))
     plt.plot(mean,label='mean displacement')
@@ -201,9 +203,9 @@ def results(rep=30):
     plt.ylabel(r'displacement $\theta$')
     plt.xlabel(r'time $t$')
     plt.legend(loc='best')
-    tikz_save('PID_plot.tikz',figureheight = '\\figureheight',figurewidth='\\figurewidth')
+    #tikz_save('PID_plot.tikz',figureheight = '\\figureheight',figurewidth='\\figurewidth')
     #plt.savefig('PID_plot.pgf')
-    #plt.show()
+    plt.show()
 
 def main():
     param = [KP,KI,KD]

@@ -3,8 +3,8 @@ import numpy as np
 from tikzplotlib import save as tikz_save
 
 if __name__=='__main__':
-    filenames = ['GA_results.txt','PSO_results.txt']
-    labels = ['GA mean displacement','PSO mean displacement']
+    filenames = ['GA_results.txt','DP_results.txt']
+    labels = ['GA mean displacement','DP mean displacement']
     colours = ['b','r']
 
     fig = plt.figure()
@@ -34,5 +34,5 @@ if __name__=='__main__':
     plt.ylabel(r'displacement $\theta$')
     plt.xlabel(r'time $t$')
     plt.legend(loc='best')
-    tikz_save('NE_plot.tikz')
+    tikz_save('MPC_plot.tikz')
     plt.show()

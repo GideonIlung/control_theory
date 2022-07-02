@@ -31,7 +31,7 @@ class MPC(object):
         self.dt = _dt
         self.k = _k
     
-    def action(self,x0,opti='dynamic',m=10,n=100,mu=1e-3,k=2,penalty=True):
+    def action(self,x0,opti='dynamic',m=10,n=20,mu=1e-3,k=2,penalty=True):
         """
             determines the next action to be taken to control the system
 
@@ -501,9 +501,99 @@ def Simulate(n,h,K,setpoint,init_state_bool = False,init_state=None,render=True,
 
     plt.plot(error,label = opti + ":K = {}".format(K))
 
+def info(rep=30):
+    opti = "GA"
+    h = TIME_STEP
+    K = 10
+    controller = MPC(get_state,constraints,cost_function,h,K)
+
+    env_name = 'CartPole-v1'
+    env = gym.make(env_name)
+
+    init_state = np.array([0.01,0.01,0.01,0.01])
+    errors = []
+    
+    mean = []
+    std = []
+    time_data = []
+
+    for i in range(0,rep,1):
+        state = env.reset()
+        env.state = init_state
+        state = env.state
+        error = []
+
+        for _ in range(500):
+        
+            #plotting#
+            error.append(state[2])
+            start = time.time()
+            action = controller.action(state,opti)
+            end = time.time()
+            time_data.append(end-start)
+            state,reward,done,info=env.step(int(np.round(action)))
+        
+        errors.append(error)
+    
+    env.close()
+
+    X = np.array(errors)
+    M,N = X.shape
+
+    for i in range(0,N,1):
+
+        value = X[:,i].mean()
+        std.append(X[:,i].std())
+        mean.append(value)
+    
+    time_data = np.array(time_data)
+    response_time = time_data.mean()*1000
+
+    #######saving results to text file##################################
+    resultsfile = open('GA_results.txt','w')
+
+    lines = []
+
+    #looping through mean values#
+    string = str(mean[0])
+
+    for i in range(1,len(mean),1):
+        string = string + ',' + str(mean[i])
+    
+    string = string + '\n'
+    resultsfile.writelines(string)
+
+    #looping through std values#
+    string = str(std[0])
+
+    for i in range(1,len(std),1):
+        string = string + ',' + str(std[i])
+    string = string + '\n'
+    resultsfile.writelines(string)
+    resultsfile.writelines(str(response_time))
+    resultsfile.close()
+    ##################################################
+
+    mean = np.array(mean)
+    std = np.array(std)
+
+    print("average response time: ",response_time, " milliseconds")
+    print("average error ",np.abs(mean).mean())
+    print('average std error' ,np.abs(std).std())
+
+    t = np.arange(len(mean))
+    plt.plot(mean,label='mean displacement')
+    plt.fill_between(t,mean - std, mean + std, color='b', alpha=0.2)
+    plt.ylabel(r'displacement $\theta$')
+    plt.xlabel(r'time $t$')
+    plt.legend(loc='best')
+    #tikz_save('NEAT_plot.tikz')
+    plt.show()
+
 if __name__ == '__main__':
     h = TIME_STEP
     n = N_ITER
 
     #Simulate(n, h,6,SETPOINT,opti='GA')
-    analysis(K=[6,13],opti=['dynamic','GA'])
+    #analysis(K=[6,13],opti=['dynamic','GA'])
+    info()
