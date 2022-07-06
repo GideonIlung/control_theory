@@ -763,7 +763,7 @@ def crossover(x:Genome,y:Genome,connections:list):
     child.fitness = fchild
     return child,fchild
 
-def NEAT(n_inputs,n_outputs,m,n,mu_link=0.4,mu_node=0.3,mu_edge=0.2,get_iter=False):
+def NEAT(n_inputs,n_outputs,m,n,mu_link=0.4,mu_node=0.3,mu_edge=0.2,get_iter=False,learn_curve=False):
     """
         Algorithm that finds the optimal weights and structure of 
         Nueral Network
@@ -781,6 +781,7 @@ def NEAT(n_inputs,n_outputs,m,n,mu_link=0.4,mu_node=0.3,mu_edge=0.2,get_iter=Fal
 
     #initialising population#
     pop,costs,connections = init_pop(n_inputs, n_outputs, m)
+    best = [np.max(costs)]
 
     for count in range(0,n,1):
         new_pop,new_costs = speciation(pop,len(connections), threshold=1)
@@ -851,12 +852,17 @@ def NEAT(n_inputs,n_outputs,m,n,mu_link=0.4,mu_node=0.3,mu_edge=0.2,get_iter=Fal
         for x in pop:
             costs.append(x.fitness)
         
+        best.append(np.max(costs))
+
         if (get_iter == True) and (np.max(costs) == 500):
             return None,count+1
     
     if get_iter == True:
         return None,n+1
     
+    if learn_curve == True:
+        return best
+
     index = np.argmax(costs)
     x = pop[index]
     fx = costs[index]
@@ -972,6 +978,61 @@ def learn_rate(I,O,rep=30):
     data = pd.DataFrame(d)
     data.to_csv("NEAT_learn_rate.csv")
     print("mean: ",data['values'].mean())
+
+def learning_curve(I,O,rep=30):
+    
+    data = []
+    mean = []
+    std = []
+
+    for _ in range(0,rep,1):
+        temp = NEAT(I,O, m=20, n=30,learn_curve=True)
+        data.append(temp)
+    
+    X = np.array(data)
+
+    for i in range(0,N,1):
+
+        value = X[:,i].mean()
+        std.append(X[:,i].std())
+        mean.append(value)
+
+    #######saving results to text file##################################
+    resultsfile = open('NEAT_learn_curve.txt','w')
+
+    lines = []
+
+    #looping through mean values#
+    string = str(mean[0])
+
+    for i in range(1,len(mean),1):
+        string = string + ',' + str(mean[i])
+    
+    string = string + '\n'
+    resultsfile.writelines(string)
+
+    #looping through std values#
+    string = str(std[0])
+
+    for i in range(1,len(std),1):
+        string = string + ',' + str(std[i])
+    string = string + '\n'
+    resultsfile.writelines(string)
+    resultsfile.writelines(str(response_time))
+    resultsfile.close()
+    ##################################################
+
+    mean = np.array(mean)
+    std = np.array(std)
+
+    t = np.arange(len(mean))
+    plt.plot(mean,label='learning curve')
+    plt.fill_between(t,mean - std, mean + std, color='b', alpha=0.2)
+    plt.ylabel('duration without constraint violation')
+    plt.xlabel('iteration')
+    plt.legend(loc='best')
+    plt.show()
+
 
 if __name__=="__main__":
 

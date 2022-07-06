@@ -381,7 +381,7 @@ class NN:
             return pop[j]
     
 
-    def GA(self,a,b,shapes,N,k,m,mu,get_iter=False):
+    def GA(self,a,b,shapes,N,k,m,mu,get_iter=False,learn_curve=False):
         """
             Optimises the Neural Network using 
             Genetic Alogrithm
@@ -404,6 +404,7 @@ class NN:
         n_children = N-k
 
         pop,costs = self.init_population(a, b, N, shapes)
+        best = [np.max(costs)]
         
         for count in range(0,m,1):
             x,fx = self.elitism(pop, costs, k)
@@ -423,12 +424,17 @@ class NN:
             #updating generation#
             pop = x.copy()
             costs = fx.copy()
+            best.append(np.max(costs))
 
             if get_iter==True and np.max(costs) == 500:
                 return None, count+1
-        
+
+
         if get_iter == True:
-            return m
+            return None,m
+        
+        if learn_curve == True:
+            return None,best
         
         index = np.argmax(costs)
         return pop[index],costs[index]
@@ -579,7 +585,7 @@ class NN:
         fx = self.fitness(xnew,shape)
         return xnew,fx
 
-    def PSO(self,a,b,M,N,shape,c1=2,c2=2,get_iter=False):
+    def PSO(self,a,b,M,N,shape,c1=2,c2=2,get_iter=False,learn_curve = False):
         """
             Optimises function using Particle Swarm Optimisation
 
@@ -594,6 +600,7 @@ class NN:
         #initalising population#
         iteration = None
         pop,costs,local_best,local_cost,global_best,global_cost = self.PSO_init_population(a, b, M,shape)
+        best = [global_best]
 
         for count in range(0,N,1):
             
@@ -616,11 +623,16 @@ class NN:
                     global_best = x.copy()
                     global_cost = fx
             
+            best.append(global_best)
+
             if (get_iter == True) and (global_cost == 500):
                 return None,count+1
         
         if get_iter == True:
-            return N
+            return None,N
+
+        if learn_curve == True:
+            return None,best
         
         return global_best,global_cost
         
@@ -668,7 +680,7 @@ class NN:
         self.q_sort(x, fx,0,n-1)
 ######################################################################################## 
 #####################################Optimiser ########################################## 
-    def optimise(self,N=100,k=30,m=200,mu=1e-3,opti="GA",get_iter=False):
+    def optimise(self,N=100,k=30,m=200,mu=1e-3,opti="GA",get_iter=False,learn_curve=False):
         """
             Optimises the Neural Network using 
             Genetic Alogrithm
@@ -703,16 +715,17 @@ class NN:
         
 
         if opti == "GA":
-            weights,cost = self.GA(a, b, shapes,N,k,m,mu,get_iter=get_iter)
+            weights,cost = self.GA(a, b, shapes,N,k,m,mu,get_iter=get_iter,learn_curve=learn_curve)
         elif opti == "PSO":
-            weights,cost = self.PSO(a, b, N,m, shapes,get_iter=get_iter)
+            weights,cost = self.PSO(a, b, N,m, shapes,get_iter=get_iter,learn_curve=learn_curve)
         
-        if get_iter == False:
-            print(cost)
-            self.reconstruct(weights, shapes)
-            self.save_model()
-        else:
+        #for analysis#
+        if get_iter == True or learn_curve == True:
             return cost
+        
+        print(cost)
+        self.reconstruct(weights, shapes)
+        self.save_model()
 
 ######################################################################################################
 def run(shape):
@@ -855,6 +868,69 @@ def learn_rate(shape,rep=30):
     data.to_csv("GA_learn_rate.csv")
     print("mean: ",data['values'].mean())
 
+def learn_curve(shape,rep=30):
+    """
+        Displays the learning curve of the algorithm
+
+        Parameters:
+            shape (list) : dimensions of network
+            rep   (int)  : number of sampling cycles
+    """
+    model = NN(shape)
+
+    data = []
+    mean = []
+    std = []
+
+    for _ in range(0,rep,1):
+        temp = model.optimise(opti="GA",learn_curve=True)
+        data.append(temp)
+    
+    
+    X = np.array(data)
+
+    for i in range(0,N,1):
+
+        value = X[:,i].mean()
+        std.append(X[:,i].std())
+        mean.append(value)
+
+    #######saving results to text file##################################
+    resultsfile = open('GA_learn_curve.txt','w')
+
+    lines = []
+
+    #looping through mean values#
+    string = str(mean[0])
+
+    for i in range(1,len(mean),1):
+        string = string + ',' + str(mean[i])
+    
+    string = string + '\n'
+    resultsfile.writelines(string)
+
+    #looping through std values#
+    string = str(std[0])
+
+    for i in range(1,len(std),1):
+        string = string + ',' + str(std[i])
+    string = string + '\n'
+    resultsfile.writelines(string)
+    resultsfile.writelines(str(response_time))
+    resultsfile.close()
+    ##################################################
+
+    mean = np.array(mean)
+    std = np.array(std)
+
+    t = np.arange(len(mean))
+    plt.plot(mean,label='learning curve')
+    plt.fill_between(t,mean - std, mean + std, color='b', alpha=0.2)
+    plt.ylabel('duration without constraint violation')
+    plt.xlabel('iteration')
+    plt.legend(loc='best')
+    plt.show()
+
 
 if __name__ == '__main__':
     shape = [4,4,1]
@@ -862,5 +938,6 @@ if __name__ == '__main__':
     # #model.optimise(opti="PSO")
     # analysis(shape,name="GA_model.zip")
     # #run(shape)
-    learn_rate(shape)
+    #learn_rate(shape)
+    learn_curve(shape)
     
