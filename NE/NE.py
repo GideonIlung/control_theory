@@ -405,7 +405,8 @@ class NN:
 
         pop,costs = self.init_population(a, b, N, shapes)
         best = [np.max(costs)]
-        
+        mean = [np.mean(costs)]
+
         for count in range(0,m,1):
             x,fx = self.elitism(pop, costs, k)
 
@@ -425,6 +426,7 @@ class NN:
             pop = x.copy()
             costs = fx.copy()
             best.append(np.max(costs))
+            mean.append(np.mean(costs))
 
             if get_iter==True and np.max(costs) == 500:
                 return None, count+1
@@ -434,7 +436,7 @@ class NN:
             return None,m
         
         if learn_curve == True:
-            return None,best
+            return best,mean
         
         index = np.argmax(costs)
         return pop[index],costs[index]
@@ -601,6 +603,7 @@ class NN:
         iteration = None
         pop,costs,local_best,local_cost,global_best,global_cost = self.PSO_init_population(a, b, M,shape)
         best = [global_best]
+        mean = [np.mean(costs)]
 
         for count in range(0,N,1):
             
@@ -624,6 +627,7 @@ class NN:
                     global_cost = fx
             
             best.append(global_best)
+            mean.append(np.mean(costs))
 
             if (get_iter == True) and (global_cost == 500):
                 return None,count+1
@@ -632,7 +636,7 @@ class NN:
             return None,N
 
         if learn_curve == True:
-            return None,best
+            return best,mean
         
         return global_best,global_cost
         
@@ -720,7 +724,9 @@ class NN:
             weights,cost = self.PSO(a, b, N,m, shapes,get_iter=get_iter,learn_curve=learn_curve)
         
         #for analysis#
-        if get_iter == True or learn_curve == True:
+        if learn_curve == True:
+            return weights,cost
+        elif get_iter == True:
             return cost
         
         print(cost)
@@ -868,68 +874,118 @@ def learn_rate(shape,rep=30):
     data.to_csv("GA_learn_rate.csv")
     print("mean: ",data['values'].mean())
 
-def learn_curve(shape,rep=30):
+def learn_curve(shape,rep=30,plot=True):
     """
         Displays the learning curve of the algorithm
 
         Parameters:
             shape (list) : dimensions of network
             rep   (int)  : number of sampling cycles
+            plot  (bool) : plot data obtained
     """
     model = NN(shape)
 
-    data = []
-    mean = []
-    std = []
+    #time list#
+    time_data = []
+
+    #info for elite information#
+    data1 = []
+    mean1 = []
+    std1 = []
+
+    #info for mean pop
+    data2 = []
+    mean2 = []
+    std2 = []
 
     for _ in range(0,rep,1):
-        temp = model.optimise(opti="GA",learn_curve=True)
-        data.append(temp)
+        start = time.time()
+        temp1,temp2 = model.optimise(opti="PSO",learn_curve=True)
+        end = time.time()
+        time_data.append(end-start)
+        data1.append(temp1)
+        data2.append(temp2)
     
     
-    X = np.array(data)
+    X1 = np.array(data1)
+    X2 = np.array(data2)
+
+    time_data = np.array(time_data)
+    avg_time = time_data.mean()
+
+    M,N = X1.shape
 
     for i in range(0,N,1):
 
-        value = X[:,i].mean()
-        std.append(X[:,i].std())
-        mean.append(value)
+        value1 = X1[:,i].mean()
+        std1.append(X1[:,i].std())
+        mean1.append(value1)
 
-    #######saving results to text file##################################
-    resultsfile = open('GA_learn_curve.txt','w')
+        value2 = X2[:,i].mean()
+        std2.append(X2[:,i].std())
+        mean2.append(value2)
+
+    #######saving elite results to text file##################################
+    resultsfile = open('PSO_best_learn_curve.txt','w')
 
     lines = []
 
     #looping through mean values#
-    string = str(mean[0])
+    string = str(mean1[0])
 
-    for i in range(1,len(mean),1):
-        string = string + ',' + str(mean[i])
+    for i in range(1,len(mean1),1):
+        string = string + ',' + str(mean1[i])
     
     string = string + '\n'
     resultsfile.writelines(string)
 
     #looping through std values#
-    string = str(std[0])
+    string = str(std1[0])
 
-    for i in range(1,len(std),1):
-        string = string + ',' + str(std[i])
+    for i in range(1,len(std1),1):
+        string = string + ',' + str(std1[i])
     string = string + '\n'
     resultsfile.writelines(string)
-    resultsfile.writelines(str(response_time))
+    resultsfile.writelines(str(avg_time))
     resultsfile.close()
     ##################################################
 
-    mean = np.array(mean)
-    std = np.array(std)
+    #######saving mean results to text file##################################
+    resultsfile = open('PSO_mean_learn_curve.txt','w')
 
-    t = np.arange(len(mean))
-    plt.plot(mean,label='learning curve')
-    plt.fill_between(t,mean - std, mean + std, color='b', alpha=0.2)
-    plt.ylabel('duration without constraint violation')
-    plt.xlabel('iteration')
-    plt.legend(loc='best')
-    plt.show()
+    lines = []
+
+    #looping through mean values#
+    string = str(mean2[0])
+
+    for i in range(1,len(mean2),1):
+        string = string + ',' + str(mean2[i])
+    
+    string = string + '\n'
+    resultsfile.writelines(string)
+
+    #looping through std values#
+    string = str(std2[0])
+
+    for i in range(1,len(std2),1):
+        string = string + ',' + str(std2[i])
+    string = string + '\n'
+    resultsfile.writelines(string)
+    resultsfile.writelines(str(avg_time))
+    resultsfile.close()
+    ##################################################
+
+    if plot == True:
+        mean = np.array(mean1)
+        std = np.array(std1)
+
+        t = np.arange(len(mean))
+        plt.plot(mean,label='learning curve')
+        plt.fill_between(t,mean - std, mean + std, color='b', alpha=0.2)
+        plt.ylabel('duration without constraint violation')
+        plt.xlabel('iteration')
+        plt.legend(loc='best')
+        plt.show()
 
 
 if __name__ == '__main__':
@@ -939,5 +995,5 @@ if __name__ == '__main__':
     # analysis(shape,name="GA_model.zip")
     # #run(shape)
     #learn_rate(shape)
-    learn_curve(shape)
+    learn_curve(shape,plot=False)
     

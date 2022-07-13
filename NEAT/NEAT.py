@@ -7,7 +7,7 @@ import gym
 import time
 import copy
 import matplotlib.pyplot as plt
-from tikzplotlib import save as tikz_save
+# from tikzplotlib import save as tikz_save
 
 #number of iterations each chromosome trains#
 TRAIN_TIME = 500
@@ -782,6 +782,7 @@ def NEAT(n_inputs,n_outputs,m,n,mu_link=0.4,mu_node=0.3,mu_edge=0.2,get_iter=Fal
     #initialising population#
     pop,costs,connections = init_pop(n_inputs, n_outputs, m)
     best = [np.max(costs)]
+    mean = [np.mean(costs)]
 
     for count in range(0,n,1):
         new_pop,new_costs = speciation(pop,len(connections), threshold=1)
@@ -853,6 +854,7 @@ def NEAT(n_inputs,n_outputs,m,n,mu_link=0.4,mu_node=0.3,mu_edge=0.2,get_iter=Fal
             costs.append(x.fitness)
         
         best.append(np.max(costs))
+        mean.append(np.mean(costs))
 
         if (get_iter == True) and (np.max(costs) == 500):
             return None,count+1
@@ -861,7 +863,7 @@ def NEAT(n_inputs,n_outputs,m,n,mu_link=0.4,mu_node=0.3,mu_edge=0.2,get_iter=Fal
         return None,n+1
     
     if learn_curve == True:
-        return best
+        return best,mean
 
     index = np.argmax(costs)
     x = pop[index]
@@ -979,59 +981,105 @@ def learn_rate(I,O,rep=30):
     data.to_csv("NEAT_learn_rate.csv")
     print("mean: ",data['values'].mean())
 
-def learning_curve(I,O,rep=30):
+def learning_curve(I,O,rep=30,plot=True):
     
-    data = []
-    mean = []
-    std = []
+    time_data = []
+
+    data1 = []
+    mean1 = []
+    std1 = []
+
+    data2 = []
+    mean2 = []
+    std2 = []
 
     for _ in range(0,rep,1):
-        temp = NEAT(I,O, m=20, n=30,learn_curve=True)
-        data.append(temp)
+        start = time.time()
+        temp1,temp2 = NEAT(I,O, m=100, n=200,learn_curve=True)
+        end = time.time()
+        time_data.append(end-start)
+        data1.append(temp1)
+        data2.append(temp2)
     
-    X = np.array(data)
+    X1 = np.array(data1)
+    X2 = np.array(data2)
+
+    M,N = X1.shape 
 
     for i in range(0,N,1):
 
-        value = X[:,i].mean()
-        std.append(X[:,i].std())
-        mean.append(value)
+        value1 = X1[:,i].mean()
+        std1.append(X1[:,i].std())
+        mean1.append(value1)
 
-    #######saving results to text file##################################
-    resultsfile = open('NEAT_learn_curve.txt','w')
+        value2 = X2[:,i].mean()
+        std2.append(X2[:,i].std())
+        mean2.append(value2)
+
+
+    avg_time = np.mean(time_data)
+
+    #######saving best results to text file##################################
+    resultsfile = open('NEAT_best_learn_curve.txt','w')
 
     lines = []
 
     #looping through mean values#
-    string = str(mean[0])
+    string = str(mean1[0])
 
-    for i in range(1,len(mean),1):
-        string = string + ',' + str(mean[i])
+    for i in range(1,len(mean1),1):
+        string = string + ',' + str(mean1[i])
     
     string = string + '\n'
     resultsfile.writelines(string)
 
     #looping through std values#
-    string = str(std[0])
+    string = str(std1[0])
 
-    for i in range(1,len(std),1):
-        string = string + ',' + str(std[i])
+    for i in range(1,len(std1),1):
+        string = string + ',' + str(std1[i])
     string = string + '\n'
     resultsfile.writelines(string)
-    resultsfile.writelines(str(response_time))
+    resultsfile.writelines(str(avg_time))
     resultsfile.close()
     ##################################################
 
-    mean = np.array(mean)
-    std = np.array(std)
+    #######saving mean results to text file##################################
+    resultsfile = open('NEAT_mean_learn_curve.txt','w')
 
-    t = np.arange(len(mean))
-    plt.plot(mean,label='learning curve')
-    plt.fill_between(t,mean - std, mean + std, color='b', alpha=0.2)
-    plt.ylabel('duration without constraint violation')
-    plt.xlabel('iteration')
-    plt.legend(loc='best')
-    plt.show()
+    lines = []
+
+    #looping through mean values#
+    string = str(mean2[0])
+
+    for i in range(1,len(mean2),1):
+        string = string + ',' + str(mean2[i])
+    
+    string = string + '\n'
+    resultsfile.writelines(string)
+
+    #looping through std values#
+    string = str(std2[0])
+
+    for i in range(1,len(std2),1):
+        string = string + ',' + str(std2[i])
+    string = string + '\n'
+    resultsfile.writelines(string)
+    resultsfile.writelines(str(avg_time))
+    resultsfile.close()
+    ##################################################
+
+    if plot == True:
+        mean = np.array(mean)
+        std = np.array(std)
+
+        t = np.arange(len(mean))
+        plt.plot(mean,label='learning curve')
+        plt.fill_between(t,mean - std, mean + std, color='b', alpha=0.2)
+        plt.ylabel('duration without constraint violation')
+        plt.xlabel('iteration')
+        plt.legend(loc='best')
+        plt.show()
 
 
 if __name__=="__main__":
@@ -1053,4 +1101,5 @@ if __name__=="__main__":
     #analysis(n_inputs, n_outputs,rep = 30)
     #run(n_inputs, n_outputs,render=True)
 
-    learn_rate(n_inputs,n_outputs)
+    #learn_rate(n_inputs,n_outputs)
+    learning_curve(n_inputs,n_outputs,plot=False)
