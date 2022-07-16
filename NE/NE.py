@@ -602,7 +602,7 @@ class NN:
         #initalising population#
         iteration = None
         pop,costs,local_best,local_cost,global_best,global_cost = self.PSO_init_population(a, b, M,shape)
-        best = [global_best]
+        best = [global_cost]
         mean = [np.mean(costs)]
 
         for count in range(0,N,1):
@@ -626,7 +626,7 @@ class NN:
                     global_best = x.copy()
                     global_cost = fx
             
-            best.append(global_best)
+            best.append(global_cost)
             mean.append(np.mean(costs))
 
             if (get_iter == True) and (global_cost == 500):
