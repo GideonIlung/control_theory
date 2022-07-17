@@ -595,5 +595,5 @@ if __name__ == '__main__':
     n = N_ITER
 
     #Simulate(n, h,6,SETPOINT,opti='GA')
-    #analysis(K=[6,13],opti=['dynamic','GA'])
-    info()
+    analysis(K=[3,5,7,9],opti=['dynamic','dynamic','dynamic','dynamic'])
+    #info()

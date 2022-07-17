@@ -7,9 +7,9 @@ if __name__=='__main__':
     #labels = ['NE (GA) mean learning curve','NEAT mean learning curve']
     #colours = ['b','r']
 
-    filenames = ['NEAT_best_learn_curve.txt','GA_best_learn_curve.txt']
-    labels = ['NEAT best learning curve','GA best learning curve']
-    colours = ['b','r']
+    filenames = ['NEAT_mean_learn_curve.txt','GA_mean_learn_curve.txt','PSO_mean_learn_curve.txt']
+    labels = ['NEAT best learning curve','GA best learning curve','PSO best learning curve']
+    colours = ['b','r','g']
 
     fig = plt.figure()
     ax = fig.add_subplot(111)
