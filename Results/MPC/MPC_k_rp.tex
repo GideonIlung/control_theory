@@ -1,0 +1,50 @@
+% This file was created with tikzplotlib v0.10.1.
+\begin{tikzpicture}
+
+\definecolor{darkgray176}{RGB}{176,176,176}
+\definecolor{steelblue31119180}{RGB}{31,119,180}
+
+\begin{axis}[
+height=10cm,
+tick align=outside,
+tick pos=left,
+width=16cm,
+x grid style={darkgray176},
+xlabel={Horizon length \(\displaystyle k\)},
+xmin=0.55, xmax=10.45,
+xtick style={color=black},
+y grid style={darkgray176},
+ylabel={mean response time (ms)},
+ymin=-2.04583456516266, ymax=44.3948350191116,
+ytick style={color=black}
+]
+\addplot [draw=steelblue31119180, fill=steelblue31119180, mark=*, only marks]
+table{%
+x  y
+1 0.0651049613952637
+2 0.141514778137207
+3 0.303541660308838
+4 0.620859146118164
+5 1.27248334884644
+6 2.5831298828125
+7 5.19337320327759
+8 10.4811944961548
+9 21.0120620727539
+10 42.2838954925537
+};
+\addplot [semithick, steelblue31119180]
+table {%
+1 0.0651049613952637
+2 0.141514778137207
+3 0.303541660308838
+4 0.620859146118164
+5 1.27248334884644
+6 2.5831298828125
+7 5.19337320327759
+8 10.4811944961548
+9 21.0120620727539
+10 42.2838954925537
+};
+\end{axis}
+
+\end{tikzpicture}

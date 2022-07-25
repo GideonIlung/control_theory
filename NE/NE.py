@@ -820,7 +820,7 @@ def analysis(shape,name,rep = 30):
     response_time = time_data.mean()*1000
 
     #######saving results to text file##################################
-    resultsfile = open('GA_results.txt','w')
+    resultsfile = open('PSO_results.txt','w')
 
     lines = []
 
@@ -992,8 +992,8 @@ if __name__ == '__main__':
     shape = [4,4,1]
     # model = NN(shape)
     # #model.optimise(opti="PSO")
-    # analysis(shape,name="GA_model.zip")
+    analysis(shape,name="PSO_model.zip")
     # #run(shape)
     #learn_rate(shape)
-    learn_curve(shape,plot=False)
+    #learn_curve(shape,plot=False)
     

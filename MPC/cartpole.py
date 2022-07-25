@@ -2,6 +2,7 @@ import gym
 import time
 import numpy as np
 import matplotlib.pyplot as plt
+import tikzplotlib
 
 #CONSTANTS
 TIME_STEP = 0.1
@@ -455,10 +456,29 @@ def analysis(K,opti=['dynamic']):
     plt.ylabel(r'$\theta$ displacement')
     plt.xlabel('time')
     plt.plot(line,'k--')
-    plt.legend(loc='best')    
+    plt.legend(loc='best')
+    tikzplotlib.save("MPC_results.tex",axis_height='10cm',axis_width='16cm') 
     plt.show()
 
-def Simulate(n,h,K,setpoint,init_state_bool = False,init_state=None,render=True,opti='dynamic'):
+def analysis_noise(K,opti=['dynamic']):
+    h = TIME_STEP
+    n = N_ITER
+
+    init_state = np.array([0.01,0.01,0.01,0.01])
+    noise = np.random.normal(loc=0.0,scale=0.1,size=500)
+    for i in range(0,len(K),1):
+        Simulate_noise(noise,n, h,K[i],SETPOINT,init_state_bool=True,init_state=init_state,render=False,opti=opti[i])
+
+    #plotting zero line#
+    line = np.zeros(n)
+    plt.ylabel(r'$\theta$ displacement')
+    plt.xlabel('time')
+    plt.plot(line,'k--')
+    plt.legend(loc='best')   
+    tikzplotlib.save("MPC_noise_results.tex",axis_height='10cm',axis_width='16cm') 
+    plt.show()
+
+def Simulate(n,h,K,setpoint,init_state_bool = False,init_state=None,render=True,opti='dynamic',plot=True):
     '''
     Simulates and attempts to solve the cart pole problem
 
@@ -479,14 +499,18 @@ def Simulate(n,h,K,setpoint,init_state_bool = False,init_state=None,render=True,
     if init_state_bool != False:
         env.state = init_state
         state = env.state
-        
+    
+    time_data = []
     error = []
 
     for _ in range(n):
         #plotting#
         error.append(state[2])
 
+        start = time.time()
         action = controller.action(state,opti)
+        end = time.time()
+        time_data.append(end-start)
         state,reward,done,info=env.step(action)
 
         if render == True:
@@ -499,10 +523,65 @@ def Simulate(n,h,K,setpoint,init_state_bool = False,init_state=None,render=True,
 
     env.close()
 
-    plt.plot(error,label = opti + ":K = {}".format(K))
+    if plot == True:
+        plt.plot(error,label = ":K = {}".format(K))
+    else:
+        return np.mean(error),np.mean(time_data)
+
+def Simulate_noise(noise,n,h,K,setpoint,init_state_bool = False,init_state=None,render=True,opti='dynamic',plot=True):
+    '''
+    Simulates and attempts to solve the cart pole problem
+
+            Parameters:
+                    n        (int)   : number of iterations
+                    h        (float) : the time-step. i.e the time between measurements
+                    param    (list)  : list of 3 float values. parameters of the PID controller
+                    setpoint (array) : the desired state
+                    render   (bool)  : visualisation of problem 
+    '''
+
+    env_name = 'CartPole-v1'
+    env = gym.make(env_name)
+
+    controller = MPC(get_state,constraints,cost_function,h,K)
+
+    state = env.reset()
+    if init_state_bool != False:
+        env.state = init_state
+        state = env.state
+    
+    time_data = []
+    error = []
+
+    for i in range(n):
+        #plotting#
+        error.append(state[2])
+
+        new_state = np.copy(state)
+        new_state[2]+= noise[i]
+        start = time.time()
+        action = controller.action(state,opti)
+        end = time.time()
+        time_data.append(end-start)
+        state,reward,done,info=env.step(action)
+
+        if render == True:
+            env.render()
+            time.sleep(0.08)
+
+        if done == True:
+            state = env.reset()
+            #controller.reset()
+
+    env.close()
+
+    if plot == True:
+        plt.plot(error,label = ":K = {}".format(K))
+    else:
+        return np.mean(error),np.mean(time_data)
 
 def info(rep=30):
-    opti = "GA"
+    opti = "dynamic"
     h = TIME_STEP
     K = 10
     controller = MPC(get_state,constraints,cost_function,h,K)
@@ -528,7 +607,7 @@ def info(rep=30):
             #plotting#
             error.append(state[2])
             start = time.time()
-            action = controller.action(state,opti)
+            action = controller.action(state,opti=opti)
             end = time.time()
             time_data.append(end-start)
             state,reward,done,info=env.step(int(np.round(action)))
@@ -550,7 +629,7 @@ def info(rep=30):
     response_time = time_data.mean()*1000
 
     #######saving results to text file##################################
-    resultsfile = open('GA_results.txt','w')
+    resultsfile = open('MPC_k10_results.txt','w')
 
     lines = []
 
@@ -590,10 +669,137 @@ def info(rep=30):
     #tikz_save('NEAT_plot.tikz')
     plt.show()
 
+
+def info_noise(noise,K,rep=30,std_div=0.1):
+    opti = "dynamic"
+    h = TIME_STEP
+    controller = MPC(get_state,constraints,cost_function,h,K)
+
+    env_name = 'CartPole-v1'
+    env = gym.make(env_name)
+
+    init_state = np.array([0.01,0.01,0.01,0.01])
+    errors = []
+    
+    mean = []
+    std = []
+    time_data = []
+
+    
+
+    for i in range(0,rep,1):
+        state = env.reset()
+        env.state = init_state
+        state = env.state
+        error = []
+
+        for j in range(500):
+        
+            #plotting#
+            error.append(state[2])
+            start = time.time()
+            new_state = np.copy(state)
+            new_state[2]+= noise[i,j]
+            action = controller.action(new_state,opti=opti)
+            end = time.time()
+            time_data.append(end-start)
+            state,reward,done,info=env.step(int(np.round(action)))
+        
+        errors.append(error)
+    
+    env.close()
+
+    X = np.array(errors)
+    M,N = X.shape
+
+    for i in range(0,N,1):
+
+        value = X[:,i].mean()
+        std.append(X[:,i].std())
+        mean.append(value)
+    
+    time_data = np.array(time_data)
+    response_time = time_data.mean()*1000
+
+    #######saving results to text file##################################
+    resultsfile = open('MPC_noise_k{}_results.txt'.format(K),'w')
+
+    lines = []
+
+    #looping through mean values#
+    string = str(mean[0])
+
+    for i in range(1,len(mean),1):
+        string = string + ',' + str(mean[i])
+    
+    string = string + '\n'
+    resultsfile.writelines(string)
+
+    #looping through std values#
+    string = str(std[0])
+
+    for i in range(1,len(std),1):
+        string = string + ',' + str(std[i])
+    string = string + '\n'
+    resultsfile.writelines(string)
+    resultsfile.writelines(str(response_time))
+    resultsfile.close()
+    ##################################################
+
+    mean = np.array(mean)
+    std = np.array(std)
+
+    print("average response time: ",response_time, " milliseconds")
+    print("average error ",np.abs(mean).mean())
+    print('average std error' ,np.abs(std).std())
+
+    t = np.arange(len(mean))
+    plt.plot(mean,label='mean displacement')
+    plt.fill_between(t,mean - std, mean + std, color='b', alpha=0.2)
+    plt.ylabel(r'displacement $\theta$')
+    plt.xlabel(r'time $t$')
+    plt.legend(loc='best')
+    #tikz_save('NEAT_plot.tikz')
+    plt.show()
+
+def k_plot(k_max=10):
+
+    h = TIME_STEP
+    n = N_ITER
+    init_state = np.array([0.01,0.01,0.01,0.01])
+
+    errors = []
+    times = []
+
+    for i in range(1,k_max+1,1):
+        error,reponse_time = Simulate(n, h,i,SETPOINT,init_state_bool=True,init_state=init_state,render=False,opti='dynamic',plot=False)
+        errors.append(error)
+        times.append(reponse_time*1000)
+    
+    # plt.scatter(list(range(1,k_max+1,1)),errors)
+    # plt.plot(list(range(1,k_max+1,1)),errors)
+    # #plt.plot(times,label='mean response time')
+    # plt.ylabel(r'mean displacement $\bar{\theta}$')
+    # plt.xlabel(r'Horizon length $k$')   
+
+    plt.scatter(list(range(1,k_max+1,1)),times)
+    plt.plot(list(range(1,k_max+1,1)),times)
+    plt.ylabel(r'mean response time (ms)')
+    plt.xlabel(r'Horizon length $k$') 
+    tikzplotlib.save("MPC_k_rp.tex",axis_height='10cm',axis_width='16cm')  
+    plt.show()
 if __name__ == '__main__':
     h = TIME_STEP
     n = N_ITER
 
     #Simulate(n, h,6,SETPOINT,opti='GA')
-    analysis(K=[3,5,7,9],opti=['dynamic','dynamic','dynamic','dynamic'])
+    analysis(K=[1,5,10],opti=['dynamic','dynamic','dynamic'])
+    #analysis_noise(K=[1,5,10],opti=['dynamic','dynamic','dynamic'])
     #info()
+
+    # noise = np.random.normal(loc=0.0,scale=0.1,size=(30,500))
+    # K = [1,5,10]
+
+    # for x in K:
+    #     info_noise(noise,x)
+    # #k_plot()

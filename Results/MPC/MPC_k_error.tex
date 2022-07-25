@@ -1,0 +1,50 @@
+% This file was created with tikzplotlib v0.10.1.
+\begin{tikzpicture}
+
+\definecolor{darkgray176}{RGB}{176,176,176}
+\definecolor{steelblue31119180}{RGB}{31,119,180}
+
+\begin{axis}[
+height=10cm,
+tick align=outside,
+tick pos=left,
+width=16cm,
+x grid style={darkgray176},
+xlabel={Horizon length \(\displaystyle k\)},
+xmin=0.55, xmax=10.45,
+xtick style={color=black},
+y grid style={darkgray176},
+ylabel={mean displacement \(\displaystyle \bar{\theta}\)},
+ymin=-0.00489073802028303, ymax=0.0647347219201471,
+ytick style={color=black}
+]
+\addplot [draw=steelblue31119180, fill=steelblue31119180, mark=*, only marks]
+table{%
+x  y
+1 0.0615699282864912
+2 -0.00172594438662712
+3 0.00173230649985091
+4 0.00177600426278699
+5 -4.73106212484527e-05
+6 -0.000202907274630415
+7 -0.000214085435012048
+8 0.000105129530182371
+9 0.00192762261338051
+10 -0.00157110371343559
+};
+\addplot [semithick, steelblue31119180]
+table {%
+1 0.0615699282864912
+2 -0.00172594438662712
+3 0.00173230649985091
+4 0.00177600426278699
+5 -4.73106212484527e-05
+6 -0.000202907274630415
+7 -0.000214085435012048
+8 0.000105129530182371
+9 0.00192762261338051
+10 -0.00157110371343559
+};
+\end{axis}
+
+\end{tikzpicture}
