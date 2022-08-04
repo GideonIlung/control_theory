@@ -2,7 +2,6 @@
 import gym
 import time
 import numpy as np
-import matplotlib
 import matplotlib.pyplot as plt 
 from tikzplotlib import save as tikz_save
 # matplotlib.use("pgf")
@@ -522,7 +521,57 @@ def tournament_selection(pop,costs):
     else:
         return pop[j]
 
-def GA(N=30,m=25,max_iter=50,a=[-10,-10,-10],b=[10,10,10]):
+def mutation(x0,a,b,std=0.1):
+    """
+        Randomly mutates network based off parameters
+
+        Parameters:
+            x0  (list)  : the candidate solution to be mutated
+            a   (list)  : lower boundary values
+            b   (list)  : upper boundary values
+            std (float) : standard deviation of mutation
+    """
+
+    x = []
+
+    for i in range(0,len(a),1):
+        x_new = x0[i] + np.random.normal(0,std)
+
+        if not(a[i]<=x_new<=b[i]):
+            r = np.random.uniform(0,1)
+            xnew = a[i] + (b[i]-a[i])*r
+
+        x.append(x_new)
+    
+    fx = fitness(x)
+    return x,fx
+
+def analysis(rep=30):
+
+    X1 = []
+    X2 = []
+
+    for _ in range(0,rep,1):
+        x1,x2 = GA(get_info=True)
+    
+    X1 = np.array(X1)
+    X2 = np.array(X2)
+
+    best = []
+    mean = []
+
+    m,n = X1.shape
+
+    for i in range(0,n,1):
+        best.append(np.mean(X1[:,i]))
+        mean.append(np.mean(X2[:,i]))
+    
+    plt.plot(best,label='best')
+    plt.plot(mean,label='mean')
+    plt.legend(loca='best')
+    plt.show()
+
+def GA(N=30,m=25,mu=0.2,max_iter=50,a=[-10,-10,-10],b=[10,10,10],get_info=False):
     """
         performs th real coded genetic algorithm to determine
         the fitness of the function
@@ -530,6 +579,7 @@ def GA(N=30,m=25,max_iter=50,a=[-10,-10,-10],b=[10,10,10]):
         Parameters:
             N        (int)   : the population size
             m        (int)   : number of children created at each generation
+            mu       (int)   : mutation rate
             max_iter (int)   : maximum number of generations
             a        (list)  : lower boundaries
             b        (list)  : upper boundaries
@@ -540,6 +590,11 @@ def GA(N=30,m=25,max_iter=50,a=[-10,-10,-10],b=[10,10,10]):
     """
 
     pop,costs = init_population(a, b, N)
+
+    #error plotting#
+    best = []
+    mean = []
+
 
     for _ in range(0,max_iter,1):
         x,fx = elitism(pop, costs, m)
@@ -554,24 +609,45 @@ def GA(N=30,m=25,max_iter=50,a=[-10,-10,-10],b=[10,10,10]):
             x.append(child)
             fx.append(child_cost)
         
+        #doing mutation#
+        if mu>0:
+            for i in range(0,len(x),1):
+                r = np.random.uniform(0,1)
+
+                if r<mu:
+                    y,fy = mutation(x[i], a, b)
+                    x[i] = y.copy()
+                    fx[i] = fy
+        
         #updating population#
         pop = x.copy()
         costs = fx.copy()
+
+        #error appending#
+        best.append(np.min(costs))
+        mean.append(np.mean(costs))
     
     #getting solution#
-    index = np.argmin(costs)
-    return pop[index],costs[index]
+
+    if get_info == False:
+        index = np.argmin(costs)
+        return pop[index],costs[index]
+    else:
+        return best,mean
 
 
 if __name__ == '__main__':
     #param = [0.5,1,1]
     #param = [6.938717509576231, -1.5198859377033884, 0.38182199447522647]
-    param = [10.482953744496049, -1.9495400012718576, 0.5857363525523501]
+    #param = [10.482953744496049, -1.9495400012718576, 0.5857363525523501]
     h = TIME_STEP
     n = N_ITER
     #Simulate(n, h, param,SETPOINT)
     #results(param)
-    results_noise(param)
+    #results_noise(param)
     #PARAMETER OPTIMISATION
     # param,cost = GA()
     # print(param,cost)
+
+    #analysis plot#
+    analysis()
