@@ -465,7 +465,7 @@ def analysis_noise(K,opti=['dynamic']):
     n = N_ITER
 
     init_state = np.array([0.01,0.01,0.01,0.01])
-    noise = np.random.normal(loc=0.0,scale=0.1,size=500)
+    noise = np.random.normal(loc=0.0,scale=0.01,size=500)
     for i in range(0,len(K),1):
         Simulate_noise(noise,n, h,K[i],SETPOINT,init_state_bool=True,init_state=init_state,render=False,opti=opti[i])
 
@@ -793,13 +793,14 @@ if __name__ == '__main__':
     n = N_ITER
 
     #Simulate(n, h,6,SETPOINT,opti='GA')
-    analysis(K=[1,5,10],opti=['dynamic','dynamic','dynamic'])
+    #analysis(K=[1,5,10],opti=['dynamic','dynamic','dynamic'])
     #analysis_noise(K=[1,5,10],opti=['dynamic','dynamic','dynamic'])
     #info()
 
-    # noise = np.random.normal(loc=0.0,scale=0.1,size=(30,500))
-    # K = [1,5,10]
+    noise = np.random.normal(loc=0.0,scale=0.01,size=(30,500))
+    K = [1,5,10]
 
-    # for x in K:
-    #     info_noise(noise,x)
-    # #k_plot()
+    for x in K:
+        info_noise(noise,x)
+        print('======================================================')
+    #k_plot()

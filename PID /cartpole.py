@@ -234,7 +234,7 @@ def results(param,rep=30):
     #plt.savefig('PID_plot.pgf')
     plt.show()
 
-def results_noise(param,rep=30,std_div=0.1):
+def results_noise(param,rep=30,std_div=0.01):
 
     env_name = 'CartPole-v1'
     env = gym.make(env_name)

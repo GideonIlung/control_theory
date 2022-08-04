@@ -8,8 +8,8 @@ if __name__=='__main__':
     #labels = ['NE (GA) mean learning curve','NEAT mean learning curve']
     #colours = ['b','r']
 
-    filenames = ['MPC/MPC_k1_results.txt','MPC/MPC_k5_results.txt','MPC/MPC_k10_results.txt']
-    labels = [r'$k=1$',r'$k=5$',r'$k=10$']
+    filenames = ['PID/PID_noise_results_1.txt','PID/PID_noise_results_2.txt','PID/PID_noise_results_3.txt']
+    labels = [r'$\dagger$',r'$\diamond$',r'$\ast$']
     colours = ['b','r','g']
 
     fig = plt.figure()
@@ -43,6 +43,6 @@ if __name__=='__main__':
     plt.xlabel(r'time $t$')
     #plt.xlabel('generations')
     plt.legend(loc='best')
-    tikzplotlib.save("MPC_results.tex",axis_height='10cm',axis_width='16cm')
+    tikzplotlib.save("PID_noise_results.tex",axis_height='10cm',axis_width='16cm')
     #tikz_save('test_plot.tikz',axis_height='\\figH',axis_width='\\figW')
     plt.show()

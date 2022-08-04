@@ -990,9 +990,9 @@ def learn_curve(shape,rep=30,plot=True):
 
 if __name__ == '__main__':
     shape = [4,4,1]
-    # model = NN(shape)
-    # #model.optimise(opti="PSO")
-    analysis(shape,name="PSO_model.zip")
+    model = NN(shape)
+    model.optimise(opti="GA")
+    #analysis(shape,name="PSO_model.zip")
     # #run(shape)
     #learn_rate(shape)
     #learn_curve(shape,plot=False)
