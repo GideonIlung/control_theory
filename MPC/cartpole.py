@@ -199,8 +199,14 @@ class MPC(object):
         x = u.copy()
         y = v.copy()
 
+        #if vector too small for crossover#
+        if L <=2:
+           fx,_ = self.evaluate(x0,x,self.k,_penalty)
+           fy,_ = self.evaluate(x0,y,self.k,_penalty)
+           return [x,y],[fx,fy] 
+
         #single point crossover#
-        if mode == 1:
+        if (mode == 1):
             i = np.random.randint(0,L-2)
             x[i:L] = v[i:L].copy()
             y[i:L] = u[i:L].copy()
@@ -442,43 +448,45 @@ def cost_function(X,k):
     
     return ans
 
-def analysis(K,opti=['dynamic']):
+def analysis(K,opti=['dynamic'],ax=None):
     h = TIME_STEP
     n = N_ITER
 
     init_state = np.array([0.01,0.01,0.01,0.01])
 
     for i in range(0,len(K),1):
-        Simulate(n, h,K[i],SETPOINT,init_state_bool=True,init_state=init_state,render=False,opti=opti[i])
+        Simulate(n, h,K[i],SETPOINT,init_state_bool=True,init_state=init_state,render=False,opti=opti[i],axes=ax)
 
     #plotting zero line#
-    line = np.zeros(n)
-    plt.ylabel(r'$\theta$ displacement')
-    plt.xlabel('time')
-    plt.plot(line,'k--')
-    plt.legend(loc='best')
-    tikzplotlib.save("MPC_results.tex",axis_height='10cm',axis_width='16cm') 
-    plt.show()
+    if ax == None:
+        line = np.zeros(n)
+        plt.ylabel(r'$\theta$ displacement')
+        plt.xlabel('time')
+        plt.plot(line,'k--')
+        plt.legend(loc='best')
+        tikzplotlib.save("MPC_results.tex",axis_height='10cm',axis_width='16cm') 
+        plt.show()
 
-def analysis_noise(K,opti=['dynamic']):
+def analysis_noise(K,opti=['dynamic'],ax=None):
     h = TIME_STEP
     n = N_ITER
 
     init_state = np.array([0.01,0.01,0.01,0.01])
     noise = np.random.normal(loc=0.0,scale=0.01,size=500)
     for i in range(0,len(K),1):
-        Simulate_noise(noise,n, h,K[i],SETPOINT,init_state_bool=True,init_state=init_state,render=False,opti=opti[i])
+        Simulate_noise(noise,n, h,K[i],SETPOINT,init_state_bool=True,init_state=init_state,render=False,opti=opti[i],axes=ax)
 
     #plotting zero line#
-    line = np.zeros(n)
-    plt.ylabel(r'$\theta$ displacement')
-    plt.xlabel('time')
-    plt.plot(line,'k--')
-    plt.legend(loc='best')   
-    tikzplotlib.save("MPC_noise_results.tex",axis_height='10cm',axis_width='16cm') 
-    plt.show()
+    if ax == None:
+        line = np.zeros(n)
+        plt.ylabel(r'$\theta$ displacement')
+        plt.xlabel('time')
+        plt.plot(line,'k--')
+        plt.legend(loc='best')   
+        tikzplotlib.save("MPC_noise_results.tex",axis_height='10cm',axis_width='16cm') 
+        plt.show()
 
-def Simulate(n,h,K,setpoint,init_state_bool = False,init_state=None,render=True,opti='dynamic',plot=True):
+def Simulate(n,h,K,setpoint,init_state_bool = False,init_state=None,render=True,opti='dynamic',plot=True,axes = None):
     '''
     Simulates and attempts to solve the cart pole problem
 
@@ -523,12 +531,14 @@ def Simulate(n,h,K,setpoint,init_state_bool = False,init_state=None,render=True,
 
     env.close()
 
-    if plot == True:
+    if (plot == True) and (axes == None):
         plt.plot(error,label = ":K = {}".format(K))
+    elif (plot == True):
+        axes.plot(error,label = ":K = {}".format(K))
     else:
         return np.mean(error),np.mean(time_data)
 
-def Simulate_noise(noise,n,h,K,setpoint,init_state_bool = False,init_state=None,render=True,opti='dynamic',plot=True):
+def Simulate_noise(noise,n,h,K,setpoint,init_state_bool = False,init_state=None,render=True,opti='dynamic',plot=True,axes=None):
     '''
     Simulates and attempts to solve the cart pole problem
 
@@ -575,15 +585,17 @@ def Simulate_noise(noise,n,h,K,setpoint,init_state_bool = False,init_state=None,
 
     env.close()
 
-    if plot == True:
+    if (plot == True) and (axes == None):
         plt.plot(error,label = ":K = {}".format(K))
+    elif (plot == True):
+        axes.plot(error,label = ":K = {}".format(K))
     else:
         return np.mean(error),np.mean(time_data)
 
 def info(rep=30):
-    opti = "dynamic"
+    opti = "GA"
     h = TIME_STEP
-    K = 10
+    K = 5
     controller = MPC(get_state,constraints,cost_function,h,K)
 
     env_name = 'CartPole-v1'
@@ -629,7 +641,7 @@ def info(rep=30):
     response_time = time_data.mean()*1000
 
     #######saving results to text file##################################
-    resultsfile = open('MPC_k10_results.txt','w')
+    resultsfile = open('MPC_GA_k5_results.txt','w')
 
     lines = []
 
@@ -671,7 +683,7 @@ def info(rep=30):
 
 
 def info_noise(noise,K,rep=30,std_div=0.1):
-    opti = "dynamic"
+    opti = "GA"
     h = TIME_STEP
     controller = MPC(get_state,constraints,cost_function,h,K)
 
@@ -722,7 +734,7 @@ def info_noise(noise,K,rep=30,std_div=0.1):
     response_time = time_data.mean()*1000
 
     #######saving results to text file##################################
-    resultsfile = open('MPC_noise_k{}_results.txt'.format(K),'w')
+    resultsfile = open('MPC_GA_noise_k{}_results.txt'.format(K),'w')
 
     lines = []
 
@@ -768,26 +780,67 @@ def k_plot(k_max=10):
     n = N_ITER
     init_state = np.array([0.01,0.01,0.01,0.01])
 
-    errors = []
-    times = []
+    errors1 = []
+    times1 = []
+
+    errors2 = []
+    times2 = []
+
 
     for i in range(1,k_max+1,1):
-        error,reponse_time = Simulate(n, h,i,SETPOINT,init_state_bool=True,init_state=init_state,render=False,opti='dynamic',plot=False)
-        errors.append(error)
-        times.append(reponse_time*1000)
+        error1,reponse_time1 = Simulate(n, h,i,SETPOINT,init_state_bool=True,init_state=init_state,render=False,opti='dynamic',plot=False)
+        error2,reponse_time2 = Simulate(n, h,i,SETPOINT,init_state_bool=True,init_state=init_state,render=False,opti='GA',plot=False)
+
+        errors1.append(error1)
+        times1.append(reponse_time1*1000)
+
+        errors2.append(error2)
+        times2.append(reponse_time2*1000)
     
-    # plt.scatter(list(range(1,k_max+1,1)),errors)
-    # plt.plot(list(range(1,k_max+1,1)),errors)
+    #MEAN PLOT #
+    # plt.scatter(list(range(1,k_max+1,1)),errors1)
+    # plt.plot(list(range(1,k_max+1,1)),errors1,label='Dynamic programming')
+
+    # plt.scatter(list(range(1,k_max+1,1)),errors2)
+    # plt.plot(list(range(1,k_max+1,1)),errors2,label='Genetic Algorithm')
+
     # #plt.plot(times,label='mean response time')
     # plt.ylabel(r'mean displacement $\bar{\theta}$')
     # plt.xlabel(r'Horizon length $k$')   
 
-    plt.scatter(list(range(1,k_max+1,1)),times)
-    plt.plot(list(range(1,k_max+1,1)),times)
-    plt.ylabel(r'mean response time (ms)')
-    plt.xlabel(r'Horizon length $k$') 
+    #RESPONSE TIME PLOT#
+    plt.scatter(list(range(1,k_max+1,1)),times1)
+    plt.plot(list(range(1,k_max+1,1)),times1,label='Dynamic programming')
+
+    plt.scatter(list(range(1,k_max+1,1)),times2)
+    plt.plot(list(range(1,k_max+1,1)),times2,label='Genetic Algorithm')
+
+    #plt.plot(times,label='mean response time')
+    plt.ylabel(r'mean response time')
+    plt.xlabel(r'Horizon length $k$')   
+
+    plt.legend(loc='best')
     tikzplotlib.save("MPC_k_rp.tex",axis_height='10cm',axis_width='16cm')  
     plt.show()
+
+def analysis_both(K,opti):
+    fig,(ax1,ax2) = plt.subplots(1,2,sharey=True)
+    analysis(K=K,opti=opti,ax=ax1)
+    analysis_noise(K=K,opti=opti,ax=ax2)
+
+    ax1.set_title('Ideal Enviroment')
+    ax1.set_ylabel(r'displacement $\theta$')
+    ax1.set_xlabel(r'time $t$')
+    ax1.legend(loc='best')
+
+    ax2.set_title('Noisy Enviroment')
+    ax2.legend(loc='best')
+    #ax2.set_ylabel(r'displacement $\theta$')
+    ax2.set_xlabel(r'time $t$')
+
+    tikzplotlib.save("MPC_results_{}.tex".format(opti[0]),axis_height='10cm',axis_width='16cm')
+    plt.show()
+
 if __name__ == '__main__':
     h = TIME_STEP
     n = N_ITER
@@ -803,4 +856,6 @@ if __name__ == '__main__':
     for x in K:
         info_noise(noise,x)
         print('======================================================')
+
     #k_plot()
+    #analysis_both(K=[1,5,10], opti=['GA','GA','GA'])

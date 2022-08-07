@@ -4,7 +4,7 @@ import tikzplotlib
 #from tikzplotlib import save as tikz_save
 
 def single_plot():
-    filenames = ['PID/PID_noise_results_1.txt','PID/PID_noise_results_2.txt','PID/PID_noise_results_3.txt']
+    filenames = ['MPC/MPC_GA_k1_results.txt','MPC/MPC_GA_k5_results.txt','MPC/MPC_GA_k10_results.txt']
     labels = [r'$\dagger$',r'$\diamond$',r'$\ast$']
     colours = ['b','r','g']
 
@@ -44,13 +44,13 @@ def single_plot():
     plt.show()
 
 def double_plot():
-    filenames1 = ['PID/PID_results_1.txt','PID/PID_results_2.txt','PID/PID_results_3.txt']
+    filenames1 = ['MPC/MPC_k1_results.txt','MPC/MPC_k5_results.txt','MPC/MPC_k10_results.txt']
     labels1 = [r'$\dagger$',r'$\diamond$',r'$\ast$']
-    filenames2 = ['PID/PID_noise_results_1.txt','PID/PID_noise_results_2.txt','PID/PID_noise_results_3.txt']
+    filenames2 = ['MPC/MPC_noise_k1_results.txt','MPC/MPC_noise_k5_results.txt','MPC/MPC_noise_k10_results.txt']
     labels2 = [r'$\dagger$',r'$\diamond$',r'$\ast$']
     colours = ['b','r','g']
 
-    fig,(ax1,ax2) = plt.subplots(2,1,sharex=True)
+    fig,(ax1,ax2) = plt.subplots(1,2,sharey=True)
 
     for i in range(0,len(filenames1),1):
         name = filenames1[i]
@@ -73,6 +73,7 @@ def double_plot():
         ax1.fill_between(t,mean - std, mean + std, color=colours[i], alpha=0.2)
         ax1.set_title('Ideal Enviroment')
         ax1.set_ylabel(r'displacement $\theta$')
+        ax1.set_xlabel(r'time $t$')
         ax1.legend(loc='best')
 
     for i in range(0,len(filenames2),1):
@@ -96,7 +97,8 @@ def double_plot():
         ax2.fill_between(t,mean - std, mean + std, color=colours[i], alpha=0.2)
         ax2.set_title('Noisy Enviroment')
         ax2.legend(loc='best')
-        ax2.set_ylabel(r'displacement $\theta$')
+        #ax2.set_ylabel(r'displacement $\theta$')
+        ax2.set_xlabel(r'time $t$')
 
      
     #plt.ylabel(r'displacement $\theta$')
@@ -106,10 +108,10 @@ def double_plot():
     plt.xlabel(r'time $t$')
     #plt.xlabel('generations')
     #plt.legend(loc='best')
-    tikzplotlib.save("PID_results.tex",axis_height='10cm',axis_width='16cm')
+    tikzplotlib.save("MPC_results.tex",axis_height='10cm',axis_width='16cm')
     #tikz_save('test_plot.tikz',axis_height='\\figH',axis_width='\\figW')
     plt.show()
 if __name__=='__main__':
-    #single_plot()
-    double_plot()
+    single_plot()
+    #double_plot()
     
