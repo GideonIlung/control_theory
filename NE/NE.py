@@ -223,8 +223,8 @@ class NN:
         for count in range(TRAIN_TIME):
             action = self.feedfoward(state)
             state,reward,done,info=env.step(int(action))
-            #score+=reward - state[2]**2
-            score+=reward
+            score+=reward - state[2]**2
+            #score+=reward
 
             if done == True:
                 break
@@ -381,6 +381,43 @@ class NN:
             return pop[j]
     
 
+    def mutation(self,x0,mu,a,b,shapes,std=0.1):
+        """
+            Mutates the network
+
+            Parameters:
+                x0    (list)  : weight parameters of network
+                a     (float) : lower boundary
+                b     (float) : upper boundary
+                shape (list)  : shape of network
+                std   (float) : standard deviation in normal distribution
+        """
+
+        x = []
+        change = False
+
+        for i in range(0,len(x0),1):
+            r = np.random.uniform(0,1)
+
+            if r <= mu:
+                change = True
+                temp = x0[i] + np.random.normal(0,std)
+
+                if not(a[i] <= temp <= b[i]):
+                    alpha = np.random.uniform(0,1)
+                    temp = a[i] + alpha*(b[i]-a[i])
+            else:
+                temp = x0[i]
+            
+            x.append(temp)
+        
+        fx = None
+        if change == True:
+            fx = self.fitness(x, shapes)
+        
+        return x,fx,change
+
+
     def GA(self,a,b,shapes,N,k,m,mu,get_iter=False,learn_curve=False):
         """
             Optimises the Neural Network using 
@@ -420,8 +457,18 @@ class NN:
                 x.append(child)
                 fx.append(child_cost)
             
-            #TODO: Add Mutation#
+            #Mutation#
+            for i in range(0,len(x),1):
 
+                if mu == 0:
+                    break
+                
+                y,fy,change = self.mutation(x[i], mu, a, b, shapes)
+
+                if change == True:
+                    x[i] = y.copy()
+                    fx[i] = fy
+        
             #updating generation#
             pop = x.copy()
             costs = fx.copy()
@@ -684,7 +731,7 @@ class NN:
         self.q_sort(x, fx,0,n-1)
 ######################################################################################## 
 #####################################Optimiser ########################################## 
-    def optimise(self,N=100,k=30,m=200,mu=1e-3,opti="GA",get_iter=False,learn_curve=False):
+    def optimise(self,N=200,k=20,m=200,mu=1e-3,opti="GA",get_iter=False,learn_curve=False):
         """
             Optimises the Neural Network using 
             Genetic Alogrithm
@@ -734,11 +781,11 @@ class NN:
         self.save_model()
 
 ######################################################################################################
-def run(shape):
+def run(shape,name='output.zip'):
     model = NN(shape)
     #model.optimise(opti="PSO")
 
-    model.load_model(filename='GA_model.zip')
+    model.load_model(filename=name)
 
     env_name = 'CartPole-v1'
     env = gym.make(env_name)
@@ -991,9 +1038,9 @@ def learn_curve(shape,rep=30,plot=True):
 if __name__ == '__main__':
     shape = [4,4,1]
     model = NN(shape)
-    model.optimise(opti="GA")
+    model.optimise(opti="PSO")
     #analysis(shape,name="PSO_model.zip")
-    # #run(shape)
+    #run(shape,name='NE_PSO1.zip')
     #learn_rate(shape)
     #learn_curve(shape,plot=False)
     
