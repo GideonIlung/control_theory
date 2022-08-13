@@ -380,46 +380,6 @@ class NN:
         else:
             return pop[j]
     
-    def mutation(self,x0,a,b,mu,shapes,std=0.1):
-        """
-            Performs mutation on parameters within NN
-
-            Parameters:
-                x   (array) : parameters in Nueral Network
-                a   (list)  : lower boundaries
-                b   (list)  : upper boundaries
-                mu  (float) : mutation probability
-                std (float) : variance in mutation
-        """
-
-        x = []
-        change = False
-
-        for i in range(0,len(x0),1):
-            
-            r = np.random.uniform(0,1)
-            xnew = x0[i] + np.random.normal(0,std)
-
-            if (r <= mu) and (a[i]<=xnew<=b[i]):
-                x.append(xnew)
-                change = True
-            elif (r<=mu):
-                p = np.random.uniform(0,1)
-                xnew = a[i] + (b[i]-a[i])*p
-                x.append(xnew)
-                change = True
-            else:
-                x.append(x[i])
-        
-        if change == True:
-            fx = self.fitness(x,shapes)
-            return x,fx,change
-        else:
-            return x,0,change
-
-
-
-
 
     def mutation(self,x0,mu,a,b,shapes,std=0.1):
         """
@@ -499,25 +459,11 @@ class NN:
             
             #Mutation#
             for i in range(0,len(x),1):
-<<<<<<< Updated upstream
 
                 if mu == 0:
                     break
                 
                 y,fy,change = self.mutation(x[i], mu, a, b, shapes)
-=======
-                
-                #if mutation zero dont loop#
-                if mu==0:
-                    break
-
-                y,fy,change = self.mutation(x[i],a,b,mu,shapes)
-
-                if change == True:
-                    x[i] = y.copy()
-                    fx[i] = fy
-
->>>>>>> Stashed changes
 
                 if change == True:
                     x[i] = y.copy()
@@ -785,7 +731,7 @@ class NN:
         self.q_sort(x, fx,0,n-1)
 ######################################################################################## 
 #####################################Optimiser ########################################## 
-    def optimise(self,N=200,k=20,m=200,mu=1e-3,opti="GA",get_iter=False,learn_curve=False):
+    def optimise(self,N=200,k=20,m=200,mu=0.3,opti="GA",get_iter=False,learn_curve=False):
         """
             Optimises the Neural Network using 
             Genetic Alogrithm
@@ -858,7 +804,7 @@ def run(shape,name='output.zip'):
 
         if render == True:
             env.render()
-            time.sleep(0.08)
+            time.sleep(0.01)
 
         if done == True:
             state = env.reset()
@@ -901,7 +847,9 @@ def analysis(shape,name,rep = 30):
             state,reward,done,info=env.step(int(action))
 
             if done == True:
-                break
+                state = env.reset()
+                env.state = init_state
+                #break
         
         errors.append(error)
     
@@ -921,7 +869,7 @@ def analysis(shape,name,rep = 30):
     response_time = time_data.mean()*1000
 
     #######saving results to text file##################################
-    resultsfile = open('PSO_results.txt','w')
+    resultsfile = open('GA3_results.txt','w')
 
     lines = []
 
@@ -959,6 +907,102 @@ def analysis(shape,name,rep = 30):
     plt.legend(loc='best')
     plt.show()
 
+def analysis_noise(shape,name,var = 0.01,rep = 30):
+    model = NN(shape)
+    model.load_model(filename=name)
+
+    env_name = 'CartPole-v1'
+    env = gym.make(env_name)
+
+    init_state = np.array([0.01,0.01,0.01,0.01])
+    errors = []
+    std = []
+    mean = []
+
+    time_data = []
+
+    noise = np.random.normal(0,var,500)
+
+    for i in range(0,rep,1):
+        state = env.reset()
+        env.state = init_state
+        state = env.state
+        error = []
+
+        for j in range(TIME):
+        
+            #plotting#
+            error.append(state[2])
+
+            new_state = np.copy(state)
+            new_state[2]+= noise[j]
+
+            start = time.time()
+            action = model.feedfoward(new_state)
+            end = time.time()
+            time_data.append(end-start)
+            state,reward,done,info=env.step(int(action))
+
+            if done == True:
+                state = env.reset()
+                env.state = init_state
+                #break
+        
+        errors.append(error)
+    
+    env.close()
+
+    X = np.array(errors)
+
+    M,N = X.shape
+
+    for i in range(0,N,1):
+
+        value = X[:,i].mean()
+        std.append(X[:,i].std())
+        mean.append(value)
+    
+    time_data = np.array(time_data)
+    response_time = time_data.mean()*1000
+
+    #######saving results to text file##################################
+    resultsfile = open('GA3_noise_results.txt','w')
+
+    lines = []
+
+    #looping through mean values#
+    string = str(mean[0])
+
+    for i in range(1,len(mean),1):
+        string = string + ',' + str(mean[i])
+    
+    string = string + '\n'
+    resultsfile.writelines(string)
+
+    #looping through std values#
+    string = str(std[0])
+
+    for i in range(1,len(std),1):
+        string = string + ',' + str(std[i])
+    string = string + '\n'
+    resultsfile.writelines(string)
+    resultsfile.writelines(str(response_time))
+    resultsfile.close()
+    ##################################################
+
+    mean = np.array(mean)
+    std = np.array(std)
+
+    
+    print("average response time: ",response_time, " milliseconds")
+
+    t = np.arange(len(mean))
+    plt.plot(mean,label='mean displacement')
+    plt.fill_between(t,mean - std, mean + std, color='b', alpha=0.2)
+    plt.ylabel(r'displacement $\theta$')
+    plt.xlabel(r'time $t$')
+    plt.legend(loc='best')
+    plt.show()
 
 #############################LEARNING RATE COMPARISION##########################################
 def learn_rate(shape,rep=30):
@@ -1091,10 +1135,15 @@ def learn_curve(shape,rep=30,plot=True):
 
 if __name__ == '__main__':
     shape = [4,4,1]
-    model = NN(shape)
-    model.optimise(opti="PSO")
-    #analysis(shape,name="PSO_model.zip")
-    #run(shape,name='NE_PSO1.zip')
+    #model = NN(shape)
+    #model.optimise(opti="GA")
+
+    analysis(shape,name="NE_GA3.zip")
+    analysis_noise(shape, name="NE_GA3.zip")
+
+    #run(shape,name='NE_PSO2.zip')
+
+
     #learn_rate(shape)
     #learn_curve(shape,plot=False)
     
