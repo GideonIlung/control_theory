@@ -380,6 +380,46 @@ class NN:
         else:
             return pop[j]
     
+    def mutation(self,x0,a,b,mu,shapes,std=0.1):
+        """
+            Performs mutation on parameters within NN
+
+            Parameters:
+                x   (array) : parameters in Nueral Network
+                a   (list)  : lower boundaries
+                b   (list)  : upper boundaries
+                mu  (float) : mutation probability
+                std (float) : variance in mutation
+        """
+
+        x = []
+        change = False
+
+        for i in range(0,len(x0),1):
+            
+            r = np.random.uniform(0,1)
+            xnew = x0[i] + np.random.normal(0,std)
+
+            if (r <= mu) and (a[i]<=xnew<=b[i]):
+                x.append(xnew)
+                change = True
+            elif (r<=mu):
+                p = np.random.uniform(0,1)
+                xnew = a[i] + (b[i]-a[i])*p
+                x.append(xnew)
+                change = True
+            else:
+                x.append(x[i])
+        
+        if change == True:
+            fx = self.fitness(x,shapes)
+            return x,fx,change
+        else:
+            return x,0,change
+
+
+
+
 
     def mutation(self,x0,mu,a,b,shapes,std=0.1):
         """
@@ -459,11 +499,25 @@ class NN:
             
             #Mutation#
             for i in range(0,len(x),1):
+<<<<<<< Updated upstream
 
                 if mu == 0:
                     break
                 
                 y,fy,change = self.mutation(x[i], mu, a, b, shapes)
+=======
+                
+                #if mutation zero dont loop#
+                if mu==0:
+                    break
+
+                y,fy,change = self.mutation(x[i],a,b,mu,shapes)
+
+                if change == True:
+                    x[i] = y.copy()
+                    fx[i] = fy
+
+>>>>>>> Stashed changes
 
                 if change == True:
                     x[i] = y.copy()
