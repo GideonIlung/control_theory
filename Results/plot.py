@@ -44,9 +44,9 @@ def single_plot():
     plt.show()
 
 def double_plot():
-    filenames1 = ['NE/PSO1_results.txt','NE/PSO2_results.txt','NE/PSO3_results.txt']
+    filenames1 = ['NEAT/NEAT1_best_learn_curve.txt','NEAT/NEAT2_best_learn_curve.txt','NEAT/NEAT1_best_learn_curve.txt']
     labels1 = [r'$\dagger$',r'$\diamond$',r'$\ast$']
-    filenames2 = ['NE/PSO1_noise_results.txt','NE/PSO2_noise_results.txt','NE/PSO3_noise_results.txt']
+    filenames2 = ['NEAT/NEAT1_mean_learn_curve.txt','NEAT/NEAT2_mean_learn_curve.txt','NEAT/NEAT3_mean_learn_curve.txt']
     labels2 = [r'$\dagger$',r'$\diamond$',r'$\ast$']
     colours = ['b','r','g']
 
@@ -71,9 +71,12 @@ def double_plot():
         t = np.arange(len(mean))
         ax1.plot(mean,label=labels1[i])
         ax1.fill_between(t,mean - std, mean + std, color=colours[i], alpha=0.2)
-        ax1.set_title('Ideal Enviroment')
-        ax1.set_ylabel(r'displacement $\theta$')
-        ax1.set_xlabel(r'time $t$')
+        #ax1.set_title('Ideal Enviroment')
+        ax1.set_title('Elite learning rate')
+        #ax1.set_ylabel(r'displacement $\theta$')
+        ax1.set_ylabel('Episode Length')
+        #ax1.set_xlabel(r'time $t$')
+        ax1.set_xlabel('generations')
         ax1.legend(loc='upper right')
 
     for i in range(0,len(filenames2),1):
@@ -95,16 +98,18 @@ def double_plot():
         t = np.arange(len(mean))
         ax2.plot(mean,label=labels2[i])
         ax2.fill_between(t,mean - std, mean + std, color=colours[i], alpha=0.2)
-        ax2.set_title('Noisy Enviroment')
+        #ax2.set_title('Noisy Enviroment')
+        ax2.set_title('Elite learning rate')
         ax2.legend(loc='upper right')
         #ax2.set_ylabel(r'displacement $\theta$')
-        ax2.set_xlabel(r'time $t$')
+        #ax2.set_xlabel(r'time $t$')
+        ax1.set_xlabel('generations')
 
      
     #plt.ylabel(r'displacement $\theta$')
     #plt.ylabel('number of iterations before constraint violation')
     #plt.xlim(0,500)
-    #plt.ylim(0,600)
+    plt.ylim(0,600)
     #plt.xlabel(r'time $t$')
     #plt.xlabel('generations')
     #plt.legend(loc='best')

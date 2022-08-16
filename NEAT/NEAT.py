@@ -1007,7 +1007,7 @@ def learn_rate(I,O,rep=30):
     data.to_csv("NEAT_learn_rate.csv")
     print("mean: ",data['values'].mean())
 
-def learning_curve(I,O,rep=30,plot=True):
+def learning_curve(I,O,m,n,rep=30,plot=True):
     
     time_data = []
 
@@ -1021,7 +1021,7 @@ def learning_curve(I,O,rep=30,plot=True):
 
     for _ in range(0,rep,1):
         start = time.time()
-        temp1,temp2 = NEAT(I,O, m=100, n=200,learn_curve=True)
+        temp1,temp2 = NEAT(I,O, m=m, n=n,learn_curve=True)
         end = time.time()
         time_data.append(end-start)
         data1.append(temp1)
@@ -1113,20 +1113,20 @@ if __name__=="__main__":
     n_inputs = 4
     n_outputs = 1
     #population size#
-    m = 20
+    m = 10
     #number of generations#
     n = 30
 
     #OPTIMISATION#
-    # x,fx = NEAT(n_inputs, n_outputs, m, n)
-    # x.save_model()
-    # x.print_genome()
-    # print(fx)
+    x,fx = NEAT(n_inputs, n_outputs, m, n)
+    x.save_model()
+    x.print_genome()
+    print(fx)
 
     #RUNNING RESULTS
-    analysis(n_inputs, n_outputs,plot=True,filename='output.zip')
+    #analysis(n_inputs, n_outputs,plot=True,filename='output.zip')
     #run(n_inputs, n_outputs,render=True)
 
     #LEARNING RATE DATA
     #learn_rate(n_inputs,n_outputs)
-    #learning_curve(n_inputs,n_outputs,plot=False)
+   # learning_curve(n_inputs,n_outputs,m,n,plot=False)
