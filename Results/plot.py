@@ -99,7 +99,7 @@ def double_plot():
         ax2.plot(mean,label=labels2[i])
         ax2.fill_between(t,mean - std, mean + std, color=colours[i], alpha=0.2)
         #ax2.set_title('Noisy Enviroment')
-        ax2.set_title('Elite learning rate')
+        ax2.set_title('Mean learning rate')
         ax2.legend(loc='upper right')
         #ax2.set_ylabel(r'displacement $\theta$')
         #ax2.set_xlabel(r'time $t$')
@@ -113,7 +113,7 @@ def double_plot():
     #plt.xlabel(r'time $t$')
     #plt.xlabel('generations')
     #plt.legend(loc='best')
-    tikzplotlib.save("NE_PSO_results.tex",axis_height='10cm',axis_width='16cm')
+    tikzplotlib.save("NEAT_Learn.tex",axis_height='10cm',axis_width='16cm')
     #tikz_save('test_plot.tikz',axis_height='\\figH',axis_width='\\figW')
     plt.show()
 if __name__=='__main__':

@@ -1113,7 +1113,7 @@ if __name__=="__main__":
     n_inputs = 4
     n_outputs = 1
     #population size#
-    m = 10
+    m = 40
     #number of generations#
     n = 30
 
