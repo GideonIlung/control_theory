@@ -7,7 +7,9 @@ import gym
 import time
 import copy
 import matplotlib.pyplot as plt
-# from tikzplotlib import save as tikz_save
+import networkx as nx
+from networkx.drawing.nx_agraph import graphviz_layout
+import tikzplotlib
 
 #number of iterations each chromosome trains#
 TRAIN_TIME = 500
@@ -282,7 +284,7 @@ class Genome:
         return change
 
     #################################################processing functions ####################################
-    def print_genome(self):
+    def print_genome(self,ax=None):
         """
             prints Genome information
         """
@@ -300,6 +302,61 @@ class Genome:
             print("Edge {}; innov {}; in {}; out {}; weight {}; enabled {}".format(i,self.edges[i].innov,self.edges[i].in_node,self.edges[i].out_node,self.edges[i].weight,self.edges[i].enabled))
         print("===============================================")
     
+
+    def plot_network(self,ax=None):
+        """
+            shows visual representation of network
+        """
+
+        G = nx.DiGraph()
+
+        edges = []
+
+        for x in self.edges:
+            temp = [x.in_node,x.out_node,x.weight]
+            edges.append(temp)
+
+        #sorting by in node values#
+        for i in range(0,len(edges)-1,1):
+            for j in range(i+1,len(edges),1):
+
+                if edges[i][0] > edges[j][0]:
+                    temp = edges[i].copy()
+                    edges[i] = edges[j].copy()
+                    edges[j] = temp.copy()
+        
+
+        #getting colours#
+        colours = []
+
+        for x in edges:
+
+            if x[2] >= 0:
+                colours.append('g')
+            else:
+                colours.append('r')
+
+
+        G.add_weighted_edges_from(edges)
+
+        for x in range(0,len(self.nodes),1):
+            G.add_node(x)
+
+        labels = nx.get_edge_attributes(G,'weight')
+
+        pos = graphviz_layout(G,prog='dot',args="-Grankdir=LR")
+
+        if ax == None:
+            nx.draw(G,edge_color=colours,with_labels=True,pos=pos)
+            nx.draw_networkx_edge_labels(G,pos=pos,edge_labels=labels)
+            plt.show()
+        else:
+            nx.draw(G,edge_color=colours,with_labels=True,pos=pos,ax=ax)
+            nx.draw_networkx_edge_labels(G,pos=pos,edge_labels=labels,ax=ax)
+
+
+
+
     def flatten(self):
         """
             flattens model and returns info as lists
@@ -763,7 +820,7 @@ def crossover(x:Genome,y:Genome,connections:list):
     child.fitness = fchild
     return child,fchild
 
-def NEAT(n_inputs,n_outputs,m,n,mu_link=0.4,mu_node=0.3,mu_edge=0.2,get_iter=False,learn_curve=False):
+def NEAT(n_inputs,n_outputs,m,n,mu_link=0.4,mu_node=0.3,mu_edge=0.2,get_iter=False,learn_curve=False,save_inbetween=False):
     """
         Algorithm that finds the optimal weights and structure of 
         Nueral Network
@@ -783,6 +840,9 @@ def NEAT(n_inputs,n_outputs,m,n,mu_link=0.4,mu_node=0.3,mu_edge=0.2,get_iter=Fal
     pop,costs,connections = init_pop(n_inputs, n_outputs, m)
     best = [np.max(costs)]
     mean = [np.mean(costs)]
+
+    #number of models to save#
+    mod_num = n//5
 
     for count in range(0,n,1):
         new_pop,new_costs = speciation(pop,len(connections), threshold=1)
@@ -853,6 +913,14 @@ def NEAT(n_inputs,n_outputs,m,n,mu_link=0.4,mu_node=0.3,mu_edge=0.2,get_iter=Fal
         for x in pop:
             costs.append(x.fitness)
         
+        #save models inbetween training#
+        if (save_inbetween == True) and (count % mod_num ==0):
+            index = np.argmax(costs)
+            filename = "gen {}".format(count)
+            pop[index].save_model(filename=filename)
+            
+
+
         best.append(np.max(costs))
         mean.append(np.mean(costs))
 
@@ -952,7 +1020,105 @@ def analysis(I, O,rep = 30,plot=True,filename='output.zip'):
 
 
     #######saving results to text file##################################
-    resultsfile = open('NEAT_results.txt','w')
+    resultsfile = open('NEAT3_results.txt','w')
+
+    lines = []
+
+    #looping through mean values#
+    string = str(mean[0])
+
+    for i in range(1,len(mean),1):
+        string = string + ',' + str(mean[i])
+    
+    string = string + '\n'
+    resultsfile.writelines(string)
+
+    #looping through std values#
+    string = str(std[0])
+
+    for i in range(1,len(std),1):
+        string = string + ',' + str(std[i])
+    string = string + '\n'
+    resultsfile.writelines(string)
+    resultsfile.writelines(str(response_time))
+    resultsfile.close()
+    ##################################################
+
+
+    mean = np.array(mean)
+    std = np.array(std)
+
+    if plot==True:
+        print("average response time: ",response_time, " milliseconds")
+        print("average error ",np.abs(mean).mean())
+        print('average std error' ,np.abs(std).std())
+
+        t = np.arange(len(mean))
+        plt.plot(mean,label='mean displacement')
+        plt.fill_between(t,mean - std, mean + std, color='b', alpha=0.2)
+        plt.ylabel(r'displacement $\theta$')
+        plt.xlabel(r'time $t$')
+        plt.legend(loc='best')
+        #tikz_save('NEAT_plot.tikz')
+        plt.show()
+
+def analysis_noise(I, O,rep = 30,var=0.01,plot=True,filename='output.zip'):
+    model = Genome(I,O)
+    model.load_model(filename=filename)
+
+    env_name = 'CartPole-v1'
+    env = gym.make(env_name)
+
+    init_state = np.array([0.01,0.01,0.01,0.01])
+    errors = []
+    
+    mean = []
+    std = []
+    time_data = []
+
+    noise = np.random.normal(0,var,500)
+
+    for i in range(0,rep,1):
+        state = env.reset()
+        env.state = init_state
+        state = env.state
+        error = []
+
+        for j in range(TIME):
+        
+            #plotting#
+            error.append(state[2])
+            start = time.time()
+
+            new_state = np.copy(state)
+            new_state[2]+= noise[j]
+
+            action = model.feedforward(new_state)
+            end = time.time()
+            time_data.append(end-start)
+            state,reward,done,info=env.step(int(np.round(action)))
+
+            if done == True:
+                env.reset()
+        errors.append(error)
+    
+    env.close()
+
+    X = np.array(errors)
+    M,N = X.shape
+
+    for i in range(0,N,1):
+
+        value = X[:,i].mean()
+        std.append(X[:,i].std())
+        mean.append(value)
+    
+    time_data = np.array(time_data)
+    response_time = time_data.mean()
+
+
+    #######saving results to text file##################################
+    resultsfile = open('NEAT3_noise_results.txt','w')
 
     lines = []
 
@@ -1108,25 +1274,55 @@ def learning_curve(I,O,m,n,rep=30,plot=True):
         plt.show()
 
 
+def print_models(files,labels):
+
+    fig, axes = plt.subplots(nrows=2, ncols=3)
+    ax = axes.flatten()
+
+    for i in range(0,len(files),1):
+        model = Genome(4,1)
+        model.load_model(filename=files[i])
+        model.print_genome()
+        model.plot_network(ax[i])
+        ax[i].set_title(labels[i])
+    
+    tikzplotlib.save("NEAT_evolution.tex",axis_height='10cm',axis_width='16cm')
+    plt.show()
+
+
+
+
 if __name__=="__main__":
 
     n_inputs = 4
     n_outputs = 1
     #population size#
-    m = 40
+    m = 20
     #number of generations#
     n = 30
 
     #OPTIMISATION#
-    x,fx = NEAT(n_inputs, n_outputs, m, n)
-    x.save_model()
-    x.print_genome()
-    print(fx)
+    # x,fx = NEAT(n_inputs, n_outputs, m, n,save_inbetween=True)
+    # x.save_model()
+    # x.print_genome()
+    # print(fx)
 
     #RUNNING RESULTS
-    #analysis(n_inputs, n_outputs,plot=True,filename='output.zip')
+    # analysis(n_inputs, n_outputs,plot=True,filename='NEAT3.zip')
+    # analysis_noise(n_inputs, n_outputs,plot=True,filename='NEAT3.zip')
     #run(n_inputs, n_outputs,render=True)
 
     #LEARNING RATE DATA
     #learn_rate(n_inputs,n_outputs)
    # learning_curve(n_inputs,n_outputs,m,n,plot=False)
+
+   #plotting networks#
+    # model = Genome(4,1)
+    # model.load_model(filename="gen 0.zip")
+    # model.print_genome()
+    # model.plot_network()
+
+    #plotting multiple networks
+    files = ['gen 0.zip','gen 6.zip','gen 12.zip','gen 18.zip','gen 24.zip','gen 30.zip']
+    labels = ['Generation 0','Generation 6','Generation 12','Generation 18','Generation 24','Generation 30']
+    print_models(files,labels)
