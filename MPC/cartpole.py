@@ -683,7 +683,7 @@ def info(rep=30):
 
 
 def info_noise(noise,K,rep=30,std_div=0.1):
-    opti = "GA"
+    opti = "dynamic"
     h = TIME_STEP
     controller = MPC(get_state,constraints,cost_function,h,K)
 
@@ -858,4 +858,4 @@ if __name__ == '__main__':
         print('======================================================')
 
     #k_plot()
-    #analysis_both(K=[1,5,10], opti=['GA','GA','GA'])
+    #analysis_both(K=[1,5,10], opti=['dynamic','dynamic','dynamic'])

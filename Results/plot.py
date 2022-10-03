@@ -44,11 +44,11 @@ def single_plot():
     plt.show()
 
 def double_plot():
-    filenames1 = ['NEAT/NEAT1_results.txt','NEAT/NEAT2_results.txt','NEAT/NEAT3_results.txt']
-    labels1 = [r'$\dagger$',r'$\diamond$',r'$\ast$']
-    filenames2 = ['NEAT/NEAT1_noise_results.txt','NEAT/NEAT2_noise_results.txt','NEAT/NEAT3_noise_results.txt']
-    labels2 = [r'$\dagger$',r'$\diamond$',r'$\ast$']
-    colours = ['b','r','g']
+    filenames1 = ['PID/PID_results_3.txt','MPC/MPC_k5_results.txt','MPC/MPC_GA_k5_results.txt','NE/PSO1_results.txt','NE/GA1_results.txt','NEAT/NEAT1_results.txt']
+    labels1 = ['PID','MPC(DP)','MPC(GA)','NE(PSO)','NE(GA)','NEAT']
+    filenames2 = ['PID/PID_noise_results_3.txt','MPC/MPC_noise_k5_results.txt','MPC/MPC_GA_noise_k5_results.txt','NE/PSO1_noise_results.txt','NE/GA1_noise_results.txt','NEAT/NEAT1_noise_results.txt']
+    labels2 = ['PID','MPC(DP)','MPC(GA)','NE(PSO)','NE(GA)','NEAT']
+    colours = ['b','r','g','c','m','y']
 
     fig,(ax1,ax2) = plt.subplots(1,2,sharey=True)
 
@@ -70,7 +70,7 @@ def double_plot():
 
         t = np.arange(len(mean))
         ax1.plot(mean,label=labels1[i])
-        ax1.fill_between(t,mean - std, mean + std, color=colours[i], alpha=0.2)
+        #ax1.fill_between(t,mean - std, mean + std, color=colours[i], alpha=0.2)
         ax1.set_title('Ideal Enviroment')
         #ax1.set_title('Elite learning rate')
         ax1.set_ylabel(r'displacement $\theta$')
@@ -97,7 +97,7 @@ def double_plot():
 
         t = np.arange(len(mean))
         ax2.plot(mean,label=labels2[i])
-        ax2.fill_between(t,mean - std, mean + std, color=colours[i], alpha=0.2)
+        #ax2.fill_between(t,mean - std, mean + std, color=colours[i], alpha=0.2)
         ax2.set_title('Noisy Enviroment')
         #ax2.set_title('Mean learning rate')
         ax2.legend(loc='upper right')
@@ -109,11 +109,11 @@ def double_plot():
     #plt.ylabel(r'displacement $\theta$')
     #plt.ylabel('number of iterations before constraint violation')
     #plt.xlim(0,500)
-    #plt.ylim(0,600)
+    #plt.ylim(-0.1,0.1)
     #plt.xlabel(r'time $t$')
     #plt.xlabel('generations')
     #plt.legend(loc='best')
-    tikzplotlib.save("NEAT_results.tex",axis_height='10cm',axis_width='16cm')
+    tikzplotlib.save("All_results.tex",axis_height='10cm',axis_width='16cm')
     #tikz_save('test_plot.tikz',axis_height='\\figH',axis_width='\\figW')
     plt.show()
 if __name__=='__main__':

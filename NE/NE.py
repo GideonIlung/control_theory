@@ -90,7 +90,7 @@ class NN:
 
             self.W.append(W)
             #updating index#
-            index = length
+            index += length
 
     def save_model(self,filename='output'):
         
