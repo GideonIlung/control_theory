@@ -9,3 +9,6 @@ The following Methods where used:
 * Neuroevolution of Augmenting Topologies (NEAT)
 
 ![](https://github.com/GideonIlung/control_theory/blob/main/Results/Gifs/all.gif)
+
+# Performance of specified control schemes:
+![](https://github.com/GideonIlung/control_theory/blob/main/Results/img/bar.png)
