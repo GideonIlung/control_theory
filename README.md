@@ -1,8 +1,8 @@
 # Control Theory Honours Thesis
 
-Comparision of different control algorithms on the cartpole enviroment.
+Implementation & comparision of different control algorithms on OpenAI's cartpole enviroment.
 
-The following Methods where used:
+The following Methods were used:
 * Proportional Integral Derivative Control (PID)
 * Model Predictive Control (MPC)
 * Neuroevolution (NE)
