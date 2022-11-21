@@ -1,4 +1,4 @@
-# control_theory
+# Control Theory
 
 Comparision of different control algorithms on the cartpole enviroment.
 
