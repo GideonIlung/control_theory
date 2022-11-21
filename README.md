@@ -1,4 +1,4 @@
-# Control Theory
+# Control Theory Honours Thesis
 
 Comparision of different control algorithms on the cartpole enviroment.
 
