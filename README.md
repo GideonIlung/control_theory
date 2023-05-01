@@ -1,5 +1,4 @@
-# Control Theory Honours Thesis
-
+# Evolution from Model Based to Model Free Control
 Implementation & comparision of different control algorithms on OpenAI's cartpole enviroment.
 
 The following Methods were used:
