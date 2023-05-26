@@ -6,6 +6,7 @@ The following Methods were used:
 * Model Predictive Control (MPC)
 * Neuroevolution (NE)
 * Neuroevolution of Augmenting Topologies (NEAT)
+* Deep Q-Learning
 
 ![](https://github.com/GideonIlung/control_theory/blob/main/Results/Gifs/all.gif)
 
